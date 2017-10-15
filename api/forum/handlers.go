@@ -4,23 +4,17 @@ import (
 	"net/http"
 	"github.com/julienschmidt/httprouter"
 	"database/sql"
-	"encoding/json"
-	"io/ioutil"
 	"log"
 	"github.com/reo7sp/technopark-db/database"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func CreateFuncMaker(db *sql.DB) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func (w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			log.Panic(err)
-		}
-
 		var forum Forum
-		err = json.Unmarshal(body, &forum)
+		err := api.ReadJsonObject(w, r, &forum)
 		if err != nil {
-			log.Panic(err)
+			return
 		}
 
 		err = forum.Create(db)
@@ -30,23 +24,21 @@ func CreateFuncMaker(db *sql.DB) func(http.ResponseWriter, *http.Request, httpro
 				isDublicate = true
 				err = forum.FetchPostsAndThreadsCount(db)
 				if err != nil {
-					log.Panic(err)
+					w.WriteHeader(500)
+					log.Println("error: api.CreateFuncMaker: forum.FetchPostsAndThreadsCount:", err)
 				}
 			} else {
-				log.Panic(err)
+				w.WriteHeader(500)
+				log.Println("error: api.CreateFuncMaker: forum.Create:", err)
 			}
 		}
 
-		respBody, err := json.Marshal(forum)
-		if err != nil {
-			log.Panic(err)
-		}
+		var statusCode int
 		if isDublicate {
-			w.WriteHeader(409)
+			statusCode = 201
 		} else {
-			w.WriteHeader(201)
+			statusCode = 409
 		}
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Write(respBody)
+		api.WriteJsonObject(w, forum, statusCode)
 	}
 }
