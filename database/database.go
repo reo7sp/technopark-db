@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	_ "github.com/lib/pq"
 	"os"
+	"io/ioutil"
 )
 
 func Connect() (*sql.DB, error) {
@@ -22,11 +23,12 @@ func Connect() (*sql.DB, error) {
 }
 
 func createTables(db *sql.DB) error {
-	_, err := db.Exec("CREATE TABLE IF NOT EXISTS forum (" +
-		"id bigserial NOT NULL PRIMARY KEY," +
-		"title varchar(256) NOT NULL," +
-		"\"user\" varchar(256) NOT NULL," +
-		"slug varchar(256) NOT NULL UNIQUE" +
-		")")
+	b, err := ioutil.ReadFile("migrations/1.sql")
+	if err != nil {
+		return nil
+	}
+	sql := string(b)
+
+	_, err = db.Exec(sql)
 	return err
 }

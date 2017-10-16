@@ -17,7 +17,8 @@ func main() {
 
 	router := httprouter.New()
 	router.POST("/api/forum/create", forum.CreateFuncMaker(db))
-	router.GET("/api/:slug/details", forum.DetailsFuncMaker(db))
+	router.GET("/api/forum/:slug/details", forum.DetailsFuncMaker(db))
+	router.POST("/api/forum/:slug/create", forum.CreateThreadFuncMaker(db))
 	router.NotFound = http.FileServer(http.Dir("swagger-ui-dist"))
 
 	fmt.Println("Starting http server at 5000 port")
