@@ -1,4 +1,4 @@
-package database
+package dbutil
 
 import "github.com/lib/pq"
 
@@ -10,3 +10,4 @@ func IsErrorAboutDublicate(err error) bool {
 	}
 	return false
 }
+

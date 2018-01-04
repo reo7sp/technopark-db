@@ -1,0 +1,36 @@
+CREATE TABLE IF NOT EXISTS forums (
+  title  VARCHAR(255) NOT NULL,
+  "user" VARCHAR(255) NOT NULL,
+  slug   VARCHAR(255) NOT NULL PRIMARY KEY
+);
+
+CREATE TABLE IF NOT EXISTS posts (
+  id         BIGSERIAL    NOT NULL PRIMARY KEY,
+  parent     VARCHAR(255) NOT NULL,
+  author     VARCHAR(255) NOT NULL,
+  forumSlug  VARCHAR(255) NOT NULL,
+  slug       VARCHAR(255) NOT NULL UNIQUE,
+  "message"  TEXT         NOT NULL,
+  votesCount INTEGER      NOT NULL DEFAULT 0,
+  createdAt  TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS threads (
+  id         BIGSERIAL    NOT NULL PRIMARY KEY,
+  title      VARCHAR(255) NOT NULL,
+  author     VARCHAR(255) NOT NULL,
+  forumSlug  VARCHAR(255) NOT NULL,
+  slug       VARCHAR(255) NOT NULL UNIQUE,
+  "message"  TEXT         NOT NULL,
+  votesCount INTEGER      NOT NULL DEFAULT 0,
+  createdAt  TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id       BIGSERIAL    NOT NULL PRIMARY KEY,
+  nickname VARCHAR(255) NOT NULL,
+  fullname VARCHAR(255) NOT NULL,
+  email    VARCHAR(255) NOT NULL,
+  about    TEXT         NOT NULL DEFAULT ''
+);
+

@@ -1,97 +1,134 @@
 package forum
 
 import (
-	"net/http"
-	"github.com/julienschmidt/httprouter"
 	"database/sql"
-	"log"
-	"github.com/reo7sp/technopark-db/database"
-	"github.com/reo7sp/technopark-db/api"
 	"github.com/reo7sp/technopark-db/api/thread"
+	"github.com/reo7sp/technopark-db/dbutil"
+	"log"
+	"net/http"
+	"github.com/reo7sp/technopark-db/apiutil"
+	"github.com/reo7sp/technopark-db/api/apimisc"
+	"github.com/reo7sp/technopark-db/api/user"
 )
 
-func CreateFuncMaker(db *sql.DB) func(http.ResponseWriter, *http.Request, httprouter.Params) {
-	return func (w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func MakeCreateForumHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+	return func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		var forumModel ForumModel
-		err := api.ReadJsonObject(w, r, &forumModel)
+		err := apiutil.ReadJsonObject(r, &forumModel)
 		if err != nil {
+			w.WriteHeader(400)
 			return
 		}
 
-		err = forumModel.Create(db)
-		var isDublicate bool
+		err = CreateForumInDB(forumModel, db)
+		isDublicate := false
 		if err != nil {
-			if database.IsErrorAboutDublicate(err) {
+			if dbutil.IsErrorAboutDublicate(err) {
 				isDublicate = true
-				forumModel, err = FindForum(db, forumModel.Slug)
-			}
-			if err != nil {
+			} else {
+				log.Println("error: api.forum.MakeCreateForumHandler: CreateForumInDB:", err)
 				w.WriteHeader(500)
-				log.Println("error: api.CreateFuncMaker: forumModel.Create:", err)
 				return
 			}
-		} else {
-			isDublicate = false
 		}
 
-		var statusCode int
 		if isDublicate {
-			statusCode = 201
-		} else {
+			forumModel, err = FindForumBySlugInDB(forumModel.Slug, db)
+		}
+
+		statusCode := 201
+		if isDublicate {
 			statusCode = 409
 		}
-		api.WriteJsonObject(w, forumModel, statusCode)
+		apiutil.WriteJsonObject(w, forumModel, statusCode)
 	}
 }
 
-func DetailsFuncMaker(db *sql.DB) func(http.ResponseWriter, *http.Request, httprouter.Params) {
-	return func (w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		slug := ps.ByName("slug")
+func MakeShowDetailsHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+	return func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
+		slug := ps["slug"]
 
-		forum, err := FindForum(db, slug)
+		forumModel, err := FindForumBySlugInDB(slug, db)
 		if err != nil {
-			apiErr := api.Error{Message: "Can't find forum with slug " + slug}
-			api.WriteJsonObject(w, apiErr, 404)
+			errJson := apimisc.Error{Message: "Can't find forum with slug " + slug}
+			apiutil.WriteJsonObject(w, errJson, 404)
 			return
 		}
 
-		api.WriteJsonObject(w, forum, 200)
+		apiutil.WriteJsonObject(w, forumModel, 200)
 	}
 }
 
-func CreateThreadFuncMaker(db *sql.DB) func(http.ResponseWriter, *http.Request, httprouter.Params) {
-	return func (w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		slug := ps.ByName("slug")
+func MakeCreateThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+	return func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
+		slug := ps["slug"]
 
 		var threadModel thread.ThreadModel
-		err := api.ReadJsonObject(w, r, &threadModel)
-		threadModel.Slug = slug
+		err := apiutil.ReadJsonObject(r, &threadModel)
 		if err != nil {
+			w.WriteHeader(400)
 			return
 		}
+		threadModel.Slug = slug
 
-		err = threadModel.Create(db)
-		var isDublicate bool
+		err = thread.CreateThreadInDB(threadModel, db)
+		isDublicate := false
 		if err != nil {
-			if database.IsErrorAboutDublicate(err) {
+			if dbutil.IsErrorAboutDublicate(err) {
 				isDublicate = true
-				threadModel, err = thread.FindThread(db, slug)
+				threadModel, err = thread.FindThreadBySlugInDB(slug, db)
 			}
 			if err != nil {
 				w.WriteHeader(500)
-				log.Println("error: api.CreateFuncMaker: threadModel.Create:", err)
+				log.Println("error: api.forum.MakeCreateForumHandler: threadModel.Create:", err)
 				return
 			}
-		} else {
-			isDublicate = false
 		}
 
-		var statusCode int
+		statusCode := 201
 		if isDublicate {
-			statusCode = 201
-		} else {
 			statusCode = 409
 		}
-		api.WriteJsonObject(w, threadModel, statusCode)
+		apiutil.WriteJsonObject(w, threadModel, statusCode)
+	}
+}
+
+func MakeShowUsersHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+	return func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
+		query := r.URL.Query()
+
+		slug := ps["slug"]
+		limit := query.Get("limit")
+		since := query.Get("since")
+		isDesc := query.Get("desc")
+
+		users, err := user.FindUsersByForumInDB(db, slug, limit, since, isDesc)
+		if err != nil {
+			errJson := apimisc.Error{Message: "Can't find forum with slug " + slug}
+			apiutil.WriteJsonObject(w, errJson, 404)
+			return
+		}
+
+		apiutil.WriteJsonObject(w, users, 200)
+	}
+}
+
+func MakeShowThreadsHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+	return func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
+		query := r.URL.Query()
+
+		slug := ps["slug"]
+		limit := query.Get("limit")
+		since := query.Get("since")
+		isDesc := query.Get("desc")
+
+		threads, err := thread.FindThreadsByForumInDB(db, slug, limit, since, isDesc)
+		if err != nil {
+			errJson := apimisc.Error{Message: "Can't find forum with slug " + slug}
+			apiutil.WriteJsonObject(w, errJson, 404)
+			return
+		}
+
+		apiutil.WriteJsonObject(w, threads, 200)
 	}
 }

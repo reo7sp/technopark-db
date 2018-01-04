@@ -1,26 +1,33 @@
 package main
 
 import (
-	"github.com/julienschmidt/httprouter"
-	"net/http"
-	"log"
-	"github.com/reo7sp/technopark-db/api/forum"
-	"github.com/reo7sp/technopark-db/database"
 	"fmt"
+	"github.com/dimfeld/httptreemux"
+	"github.com/reo7sp/technopark-db/api/forum"
+	"github.com/reo7sp/technopark-db/api/thread"
+	"github.com/reo7sp/technopark-db/dbutil"
+	"log"
+	"net/http"
 )
 
 func main() {
-	db, err := database.Connect()
+	db, err := dbutil.Connect()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	router := httprouter.New()
-	router.POST("/api/forum/create", forum.CreateFuncMaker(db))
-	router.GET("/api/forum/:slug/details", forum.DetailsFuncMaker(db))
-	router.POST("/api/forum/:slug/create", forum.CreateThreadFuncMaker(db))
-	router.NotFound = http.FileServer(http.Dir("swagger-ui-dist"))
+	router := httptreemux.New()
+	router.POST("/api/forum/create", forum.MakeCreateForumHandler(db))
+	router.GET("/api/forum/:slug/details", forum.MakeShowDetailsHandler(db))
+	router.POST("/api/forum/:slug/create", forum.MakeCreateThreadHandler(db))
+	router.POST("/api/thread/:slug/create", thread.MakeCreatePostHandler(db))
+	router.GET("/api/thread/:slug/details", thread.MakeDetailsHandler(db))
 
-	fmt.Println("Starting http server at 5000 port")
+	fileServ := http.FileServer(http.Dir("swagger-ui-dist"));
+	router.GET("/swagger", func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
+		fileServ.ServeHTTP(w, r)
+	})
+
+	fmt.Println("Starting http server: http://localhost:5000")
 	log.Fatal(http.ListenAndServe(":5000", router))
 }
