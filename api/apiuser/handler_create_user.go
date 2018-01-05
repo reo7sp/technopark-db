@@ -6,6 +6,7 @@ import (
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
 	"github.com/reo7sp/technopark-db/dbutil"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeCreateUserHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -29,7 +30,7 @@ type createUserInput struct {
 	Email    string `json:"email"`
 }
 
-type createUserOutput UserModel
+type createUserOutput api.UserModel
 
 func createUserRead(r *http.Request, ps map[string]string) (in createUserInput, err error) {
 	err = apiutil.ReadJsonObject(r, &in)

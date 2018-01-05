@@ -6,8 +6,8 @@ import (
 	"database/sql"
 	"log"
 	"errors"
-	"github.com/reo7sp/technopark-db/api/apithread"
 	"github.com/reo7sp/technopark-db/dbutil"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeCreateThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -32,7 +32,7 @@ type createThreadInput struct {
 	Slug    string `json:"slug"`
 }
 
-type createThreadOutput apithread.ThreadModel
+type createThreadOutput api.ThreadModel
 
 func createThreadRead(r *http.Request, ps map[string]string) (in createThreadInput, err error) {
 	slug, ok := ps["slug"]

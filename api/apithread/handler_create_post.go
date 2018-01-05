@@ -5,8 +5,8 @@ import (
 	"github.com/reo7sp/technopark-db/apiutil"
 	"database/sql"
 	"log"
-	"github.com/reo7sp/technopark-db/api/apipost"
 	"errors"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeCreatePostHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -36,7 +36,7 @@ type createPostInput struct {
 	Posts []createPostInputItem
 }
 
-type createPostOutputItem apipost.PostModel
+type createPostOutputItem api.PostModel
 
 type createPostOutput []createPostOutputItem
 

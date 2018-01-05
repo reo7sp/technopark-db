@@ -6,6 +6,7 @@ import (
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
 	"errors"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeShowForumHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -25,7 +26,7 @@ type showForumInput struct {
 	Slug string
 }
 
-type showForumOutput ForumModel
+type showForumOutput api.ForumModel
 
 func showForumRead(r *http.Request, ps map[string]string) (in showForumInput, err error) {
 	slug, ok := ps["slug"]

@@ -5,7 +5,7 @@ import (
 	"github.com/reo7sp/technopark-db/apiutil"
 	"database/sql"
 	"log"
-	"github.com/reo7sp/technopark-db/api/apipost"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeShowPostsHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -30,7 +30,7 @@ type showPostsInput struct {
 	IsDesc bool   `json:"desc"`
 }
 
-type showPostsOutputItem apipost.PostModel
+type showPostsOutputItem api.PostModel
 
 type showPostsOutput []showPostsOutputItem
 

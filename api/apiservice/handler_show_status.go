@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeShowStatusHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -14,7 +15,7 @@ func MakeShowStatusHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, 
 	return f
 }
 
-type showStatusOutput StatusModel
+type showStatusOutput api.StatusModel
 
 func showStatusAction(w http.ResponseWriter, db *sql.DB) {
 	var out showStatusOutput

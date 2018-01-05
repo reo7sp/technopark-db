@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeEditUserHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -28,7 +29,7 @@ type editUserInput struct {
 	Email    string `json:"email"`
 }
 
-type editUserOutput UserModel
+type editUserOutput api.UserModel
 
 func editUserRead(r *http.Request, ps map[string]string) (in editUserInput, err error) {
 	err = apiutil.ReadJsonObject(r, &in)

@@ -5,11 +5,9 @@ import (
 	"database/sql"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
-	"github.com/reo7sp/technopark-db/api/apiuser"
-	"github.com/reo7sp/technopark-db/api/apithread"
-	"github.com/reo7sp/technopark-db/api/apiforum"
 	"strconv"
 	"strings"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeShowPostHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -33,10 +31,10 @@ type showPostInput struct {
 }
 
 type showPostOutputBuilder struct {
-	Post   PostModel
-	Author apiuser.UserModel
-	Thread apithread.ThreadModel
-	Forum  apiforum.ForumModel
+	Post   api.PostModel
+	Author api.UserModel
+	Thread api.ThreadModel
+	Forum  api.ForumModel
 }
 
 type showPostOutput map[string]interface{}

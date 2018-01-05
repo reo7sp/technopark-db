@@ -5,7 +5,7 @@ import (
 	"github.com/reo7sp/technopark-db/apiutil"
 	"database/sql"
 	"log"
-	"github.com/reo7sp/technopark-db/api/apiuser"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeShowUsersHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -29,7 +29,7 @@ type showUsersInput struct {
 	IsDesc bool   `json:"desc"`
 }
 
-type showUsersOutputItem apiuser.UserModel
+type showUsersOutputItem api.UserModel
 
 type showUsersOutput []showUsersOutputItem
 

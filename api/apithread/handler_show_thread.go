@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeShowThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -24,7 +25,7 @@ type showThreadInput struct {
 	slugOrIdInput
 }
 
-type showThreadOutput ThreadModel
+type showThreadOutput api.ThreadModel
 
 func showThreadRead(r *http.Request, ps map[string]string) (in showThreadInput, err error) {
 	resolveSlugOrIdInput(ps["slug_or_id"], &in.slugOrIdInput)

@@ -6,6 +6,7 @@ import (
 	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
 	"log"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeCreateForumHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -27,7 +28,7 @@ type createForumInput struct {
 	Slug  string `json:"slug"`
 }
 
-type createForumOutput ForumModel
+type createForumOutput api.ForumModel
 
 func createForumRead(r *http.Request, ps map[string]string) (in createForumInput, err error) {
 	err = apiutil.ReadJsonObject(r, &in)

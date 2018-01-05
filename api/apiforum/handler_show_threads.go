@@ -5,7 +5,7 @@ import (
 	"github.com/reo7sp/technopark-db/apiutil"
 	"database/sql"
 	"log"
-	"github.com/reo7sp/technopark-db/api/apithread"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeShowThreadsHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -29,7 +29,7 @@ type showThreadsInput struct {
 	IsDesc bool   `json:"desc"`
 }
 
-type showThreadsOutputItem apithread.ThreadModel
+type showThreadsOutputItem api.ThreadModel
 
 type showThreadsOutput []showThreadsOutputItem
 

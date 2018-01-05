@@ -1,25 +1,18 @@
 -- tables
 
+CREATE TABLE IF NOT EXISTS users (
+  nickname VARCHAR(255) NOT NULL PRIMARY KEY,
+  fullname VARCHAR(255) NOT NULL,
+  email    VARCHAR(255) NOT NULL,
+  about    TEXT         NOT NULL DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS forums (
   slug         VARCHAR(255) NOT NULL PRIMARY KEY,
   title        VARCHAR(255) NOT NULL,
   "user"       VARCHAR(255) NOT NULL REFERENCES users (nickname),
   postsCount   INTEGER      NOT NULL DEFAULT 0,
   threadsCount INTEGER      NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS posts (
-  id         BIGSERIAL    NOT NULL PRIMARY KEY,
-  parent     BIGINT REFERENCES posts (id),
-  author     VARCHAR(255) NOT NULL REFERENCES users (nickname),
-  "message"  TEXT         NOT NULL,
-  isEdited   BOOLEAN      NOT NULL DEFAULT FALSE,
-  forumSlug  VARCHAR(255) NOT NULL REFERENCES forums (slug),
-  threadId   INTEGER      NOT NULL REFERENCES threads (id),
-  threadSlug VARCHAR(255) NOT NULL REFERENCES threads (slug),
-  createdAt  TIMESTAMP    NOT NULL DEFAULT NOW(),
-  path       BIGINT []    NOT NULL DEFAULT [],
-  rootPostNo BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS threads (
@@ -34,11 +27,18 @@ CREATE TABLE IF NOT EXISTS threads (
   rootPostsCount BIGINT       NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS users (
-  nickname VARCHAR(255) NOT NULL PRIMARY KEY,
-  fullname VARCHAR(255) NOT NULL,
-  email    VARCHAR(255) NOT NULL,
-  about    TEXT         NOT NULL DEFAULT ''
+CREATE TABLE IF NOT EXISTS posts (
+  id         BIGSERIAL    NOT NULL PRIMARY KEY,
+  parent     BIGINT REFERENCES posts (id),
+  author     VARCHAR(255) NOT NULL REFERENCES users (nickname),
+  "message"  TEXT         NOT NULL,
+  isEdited   BOOLEAN      NOT NULL DEFAULT FALSE,
+  forumSlug  VARCHAR(255) NOT NULL REFERENCES forums (slug),
+  threadId   INTEGER      NOT NULL REFERENCES threads (id),
+  threadSlug VARCHAR(255) NOT NULL REFERENCES threads (slug),
+  createdAt  TIMESTAMP    NOT NULL DEFAULT NOW(),
+  path       BIGINT []    NOT NULL DEFAULT ARRAY [] :: BIGINT [],
+  rootPostNo BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS votes (
@@ -66,6 +66,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trig_forums_incrementPostsCount ON posts;
+
 CREATE TRIGGER trig_forums_incrementPostsCount
   AFTER INSERT
   ON posts
@@ -84,6 +86,8 @@ BEGIN
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trig_forums_decrementPostsCount ON posts;
 
 CREATE TRIGGER trig_forums_decrementPostsCount
   AFTER DELETE
@@ -104,9 +108,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trig_forums_incrementThreadsCount ON threads;
+
 CREATE TRIGGER trig_forums_incrementThreadsCount
   AFTER INSERT
-  ON posts
+  ON threads
 EXECUTE PROCEDURE func_forums_incrementThreadsCount();
 
 
@@ -123,9 +129,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trig_forums_decrementThreadsCount ON threads;
+
 CREATE TRIGGER trig_forums_decrementThreadsCount
   AFTER DELETE
-  ON posts
+  ON threads
 EXECUTE PROCEDURE func_forums_decrementThreadsCount();
 
 
@@ -175,13 +183,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trig_posts_constructParentPath ON posts;
+
 CREATE TRIGGER trig_posts_constructParentPath
   AFTER INSERT
   ON posts
 EXECUTE PROCEDURE func_posts_constructParentPath();
 
 
-CREATE FUNCTION func_threads_insertVote()
+CREATE OR REPLACE FUNCTION func_threads_insertVote()
   RETURNS TRIGGER
 AS $$
 BEGIN
@@ -194,13 +204,15 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trig_threads_insertVote ON votes;
+
 CREATE TRIGGER trig_threads_insertVote
   AFTER INSERT
   ON votes
 EXECUTE PROCEDURE func_threads_insertVote();
 
 
-CREATE FUNCTION func_threads_updateVote()
+CREATE OR REPLACE FUNCTION func_threads_updateVote()
   RETURNS TRIGGER
 AS $$
 BEGIN
@@ -212,6 +224,8 @@ BEGIN
   RETURN NULL;
 END
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trig_threads_updateVote ON votes;
 
 CREATE TRIGGER trig_threads_updateVote
   AFTER UPDATE

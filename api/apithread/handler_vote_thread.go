@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeVoteThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -27,7 +28,7 @@ type voteThreadInput struct {
 	Voice    int64  `json:"voice"`
 }
 
-type voteThreadOutput ThreadModel
+type voteThreadOutput api.ThreadModel
 
 type voteThreadGetThreadInfo struct {
 	Id int64

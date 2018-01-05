@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
-	"github.com/reo7sp/technopark-db/api/apimisc"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeEditThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -24,11 +24,11 @@ func MakeEditThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, 
 type editThreadInput struct {
 	slugOrIdInput
 
-	Title string `json:"title"`
+	Title   string `json:"title"`
 	Message string `json:"message"`
 }
 
-type editThreadOutput ThreadModel
+type editThreadOutput api.ThreadModel
 
 func editThreadRead(r *http.Request, ps map[string]string) (in editThreadInput, err error) {
 	resolveSlugOrIdInput(ps["slug_or_id"], &in.slugOrIdInput)
@@ -56,7 +56,7 @@ func editThreadAction(w http.ResponseWriter, in editThreadInput, db *sql.DB) {
 		return
 	}
 	if c, _ := r.RowsAffected(); c == 0 {
-		errJson := apimisc.Error{Message: "Can't find thread with slug or id " + in.Slug}
+		errJson := api.Error{Message: "Can't find thread with slug or id " + in.Slug}
 		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}

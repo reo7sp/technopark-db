@@ -6,7 +6,7 @@ import (
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
 	"strconv"
-	"github.com/reo7sp/technopark-db/api/apimisc"
+	"github.com/reo7sp/technopark-db/api"
 )
 
 func MakeEditPostHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -28,7 +28,7 @@ type editPostInput struct {
 	Message string `json:"message"`
 }
 
-type editPostOutput PostModel
+type editPostOutput api.PostModel
 
 func editPostRead(r *http.Request, ps map[string]string) (in editPostInput, err error) {
 	in.IdStr = ps["id"]
@@ -54,7 +54,7 @@ func editPostAction(w http.ResponseWriter, in editPostInput, db *sql.DB) {
 		return
 	}
 	if c, _ := r.RowsAffected(); c == 0 {
-		errJson := apimisc.Error{Message: "Can't find post with id " + in.IdStr}
+		errJson := api.Error{Message: "Can't find post with id " + in.IdStr}
 		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}
