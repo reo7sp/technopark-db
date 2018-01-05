@@ -1,4 +1,4 @@
-package service
+package apiservice
 
 type StatusModel struct {
 	UsersCount   int64 `json:"user"`

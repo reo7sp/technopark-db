@@ -1,0 +1,37 @@
+func Make${Name}Handler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
+		in, err := ${name}Read(r, ps)
+		if err != nil {
+			w.WriteHeader(400)
+			return
+		}
+
+		${name}Action(w, in, db)
+	}
+	return f
+}
+
+type ${name}Input struct {
+}
+
+type ${name}Output struct {
+}
+
+func ${name}Read(r *http.Request, ps map[string]string) (in ${name}Input, err error) {
+	err = apiutil.ReadJsonObject(r, &in)
+	return
+}
+
+func ${name}Action(w http.ResponseWriter, in ${name}Input, db *sql.DB) {
+	var out ${name}Output
+
+    // TODO
+
+	if err != nil {
+	    log.Println("error: ${package}.${name}Action: ${action}:", err)
+		w.WriteHeader(500)
+		return
+	}
+
+	apiutil.WriteJsonObject(w, out, 200)
+}
