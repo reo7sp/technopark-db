@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+
+psql postgres --command "DROP DATABASE IF EXISTS technopark_db"
+psql postgres --command "CREATE DATABASE technopark_db"

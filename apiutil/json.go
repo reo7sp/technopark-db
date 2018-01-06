@@ -29,8 +29,8 @@ func WriteJsonObject(w http.ResponseWriter, obj interface{}, statusCode int) err
 		return err
 	}
 
-	w.WriteHeader(statusCode)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(statusCode)
 	w.Write(respBody)
 	return nil
 }

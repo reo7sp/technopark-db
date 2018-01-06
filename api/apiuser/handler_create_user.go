@@ -7,6 +7,7 @@ import (
 	"log"
 	"github.com/reo7sp/technopark-db/dbutil"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/lib/pq"
 )
 
 func MakeCreateUserHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -33,6 +34,7 @@ type createUserInput struct {
 type createUserOutput api.UserModel
 
 func createUserRead(r *http.Request, ps map[string]string) (in createUserInput, err error) {
+	in.Nickname = ps["nickname"]
 	err = apiutil.ReadJsonObject(r, &in)
 	return
 }
@@ -57,6 +59,9 @@ func createUserAction(w http.ResponseWriter, in createUserInput, db *sql.DB) {
 		return
 	}
 	if err != nil {
+		if err, ok := err.(*pq.Error); ok {
+			log.Println(err.Code.Class())
+		}
 		log.Println("error: apiuser.createUserAction: INSERT:", err)
 		w.WriteHeader(500)
 		return
@@ -67,5 +72,5 @@ func createUserAction(w http.ResponseWriter, in createUserInput, db *sql.DB) {
 	out.About = in.About
 	out.Email = in.Email
 
-	apiutil.WriteJsonObject(w, out, 200)
+	apiutil.WriteJsonObject(w, out, 201)
 }

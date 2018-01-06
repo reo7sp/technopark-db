@@ -28,6 +28,7 @@ type showUserInput struct {
 type showUserOutput api.UserModel
 
 func showUserRead(r *http.Request, ps map[string]string) (in showUserInput, err error) {
+	in.Nickname = ps["nickname"]
 	err = apiutil.ReadJsonObject(r, &in)
 	return
 }

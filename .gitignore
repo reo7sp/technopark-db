@@ -66,4 +66,5 @@ crashlytics-build.properties
 fabric.properties
 
 
-.idea
+/.idea/
+/report.html

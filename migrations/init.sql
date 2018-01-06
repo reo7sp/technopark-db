@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS users (
   nickname VARCHAR(255) NOT NULL PRIMARY KEY,
   fullname VARCHAR(255) NOT NULL,
-  email    VARCHAR(255) NOT NULL,
+  email    VARCHAR(255) NOT NULL UNIQUE,
   about    TEXT         NOT NULL DEFAULT ''
 );
 

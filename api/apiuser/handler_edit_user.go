@@ -32,6 +32,7 @@ type editUserInput struct {
 type editUserOutput api.UserModel
 
 func editUserRead(r *http.Request, ps map[string]string) (in editUserInput, err error) {
+	in.Nickname = ps["nickname"]
 	err = apiutil.ReadJsonObject(r, &in)
 	return
 }

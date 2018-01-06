@@ -1,0 +1,4 @@
+#!/bin/sh
+set -e
+
+DATABASE_URL=postgres://reo7sp@localhost/technopark_db?sslmode=disable go run main.go
