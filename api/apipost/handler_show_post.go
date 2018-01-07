@@ -98,10 +98,10 @@ func showPostAction(w http.ResponseWriter, in showPostInput, db *sql.DB) {
 
 	if in.NeedThread {
 		sqlJoins += " JOIN threads t ON (t.id = p.threadId)"
-		sqlFields += " t.id, t.title, t.author, t.forumSlug, t.\"message\", t.votes, t.createdAt"
+		sqlFields += " t.id, t.title, t.author, t.forumSlug, t.\"message\", t.createdAt"
 		sqlScans = append(sqlScans,
 			&outBuilder.Thread.Id, &outBuilder.Thread.Title, &outBuilder.Thread.AuthorNickname, &outBuilder.Thread.ForumSlug,
-			&outBuilder.Thread.Message, &outBuilder.Thread.VotesCount, &outBuilder.Thread.CreatedDateStr)
+			&outBuilder.Thread.Message, &outBuilder.Thread.CreatedDateStr)
 	}
 
 	sqlQuery := "SELECT " + sqlFields + " FROM posts p " + sqlJoins + " WHERE p.id = $1"

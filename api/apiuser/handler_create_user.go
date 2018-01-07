@@ -7,7 +7,6 @@ import (
 	"log"
 	"github.com/reo7sp/technopark-db/dbutil"
 	"github.com/reo7sp/technopark-db/api"
-	"github.com/lib/pq"
 )
 
 func MakeCreateUserHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -33,6 +32,8 @@ type createUserInput struct {
 
 type createUserOutput api.UserModel
 
+type createUserOutput2 []api.UserModel
+
 func createUserRead(r *http.Request, ps map[string]string) (in createUserInput, err error) {
 	in.Nickname = ps["nickname"]
 	err = apiutil.ReadJsonObject(r, &in)
@@ -46,22 +47,35 @@ func createUserAction(w http.ResponseWriter, in createUserInput, db *sql.DB) {
 	_, err := db.Exec(sqlQuery, in.Nickname, in.Fullname, in.About, in.Email)
 
 	if err != nil && dbutil.IsErrorAboutDublicate(err) {
-		sqlQuery := "SELECT fullname, about, email FROM users WHERE nickname = $1"
-		err := db.QueryRow(sqlQuery, in.Nickname).Scan(&out.Fullname, &out.About, &out.Email)
+		out2 := make(createUserOutput2, 0, 2)
+
+		sqlQuery := "SELECT nickname, fullname, about, email FROM users WHERE nickname = $1 OR email = $2"
+		rows, err := db.Query(sqlQuery, in.Nickname, in.Email)
 
 		if err != nil {
-			log.Println("error: apiforum.createForumAction: SELECT:", err)
+			log.Println("error: apiforum.createForumAction: SELECT by nickname start:", err)
 			w.WriteHeader(500)
 			return
 		}
 
-		apiutil.WriteJsonObject(w, out, 409)
+		defer rows.Close()
+		for rows.Next() {
+			var user api.UserModel
+
+			err = rows.Scan(&user.Nickname, &user.Fullname, &user.About, &user.Email)
+			if err != nil {
+				log.Println("error: apiforum.createForumAction: SELECT by nickname iter:", err)
+				w.WriteHeader(500)
+				return
+			}
+
+			out2 = append(out2, user)
+		}
+
+		apiutil.WriteJsonObject(w, out2, 409)
 		return
 	}
 	if err != nil {
-		if err, ok := err.(*pq.Error); ok {
-			log.Println(err.Code.Class())
-		}
 		log.Println("error: apiuser.createUserAction: INSERT:", err)
 		w.WriteHeader(500)
 		return

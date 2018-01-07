@@ -24,15 +24,13 @@ func MakeEditPostHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, ma
 
 type editPostInput struct {
 	Id      int64  `json:"-"`
-	IdStr   string `json:"-"`
 	Message string `json:"message"`
 }
 
 type editPostOutput api.PostModel
 
 func editPostRead(r *http.Request, ps map[string]string) (in editPostInput, err error) {
-	in.IdStr = ps["id"]
-	id, err := strconv.ParseInt(in.IdStr, 10, 64)
+	id, err := strconv.ParseInt(ps["id"], 10, 64)
 	if err != nil {
 		return
 	}
@@ -54,7 +52,7 @@ func editPostAction(w http.ResponseWriter, in editPostInput, db *sql.DB) {
 		return
 	}
 	if c, _ := r.RowsAffected(); c == 0 {
-		errJson := api.Error{Message: "Can't find post with id " + in.IdStr}
+		errJson := api.Error{Message: "Can't find post"}
 		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}

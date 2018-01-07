@@ -1,6 +1,8 @@
 package apithread
 
-import "strconv"
+import (
+	"strconv"
+)
 
 type slugOrIdInput struct {
 	Id    int64  `json:"-"`
@@ -17,6 +19,4 @@ func resolveSlugOrIdInput(slug string, t *slugOrIdInput) {
 	} else {
 		t.HasId = false
 	}
-
-	return
 }

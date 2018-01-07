@@ -6,6 +6,7 @@ import (
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/dbutil"
 )
 
 func MakeShowUserHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -29,18 +30,20 @@ type showUserOutput api.UserModel
 
 func showUserRead(r *http.Request, ps map[string]string) (in showUserInput, err error) {
 	in.Nickname = ps["nickname"]
-	err = apiutil.ReadJsonObject(r, &in)
 	return
 }
 
 func showUserAction(w http.ResponseWriter, in showUserInput, db *sql.DB) {
 	var out showUserOutput
 
-	out.Nickname = in.Nickname
+	sqlQuery := "SELECT nickname, fullname, about, email FROM users WHERE nickname = $1"
+	err := db.QueryRow(sqlQuery, in.Nickname).Scan(&out.Nickname, &out.Fullname, &out.About, &out.Email)
 
-	sqlQuery := "SELECT fullname, about, email FROM users WHERE nickname = $1"
-	err := db.QueryRow(sqlQuery, in.Nickname).Scan(&out.Fullname, &out.About, &out.Email)
-
+	if err != nil && dbutil.IsErrorAboutNotFound(err) {
+		errJson := api.Error{Message: "Can't find user"}
+		apiutil.WriteJsonObject(w, errJson, 404)
+		return
+	}
 	if err != nil {
 		log.Println("error: apiuser.showUserAction: SELECT:", err)
 		w.WriteHeader(500)

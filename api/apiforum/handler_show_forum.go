@@ -7,6 +7,7 @@ import (
 	"log"
 	"errors"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/dbutil"
 )
 
 func MakeShowForumHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -40,10 +41,14 @@ func showForumRead(r *http.Request, ps map[string]string) (in showForumInput, er
 func showForumAction(w http.ResponseWriter, in showForumInput, db *sql.DB) {
 	var out showForumOutput
 
-	out.Slug = in.Slug
+	sqlQuery := "SELECT slug, title, \"user\", postsCount, threadsCount FROM forums WHERE slug = $1"
+	err := db.QueryRow(sqlQuery, in.Slug).Scan(&out.Slug, &out.Title, &out.User, &out.PostsCount, &out.ThreadsCount)
 
-	sqlQuery := "SELECT title, \"user\", postsCount, threadsCount FROM forums WHERE slug = $1"
-	err := db.QueryRow(sqlQuery, in.Slug).Scan(&out.Title, &out.User, &out.PostsCount, &out.ThreadsCount)
+	if err != nil && dbutil.IsErrorAboutNotFound(err) {
+		errJson := api.Error{Message: "Can't find forum"}
+		apiutil.WriteJsonObject(w, errJson, 404)
+		return
+	}
 	if err != nil {
 		log.Println("error: apiforum.showForumAction: SELECT:", err)
 		w.WriteHeader(500)

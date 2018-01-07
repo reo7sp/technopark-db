@@ -41,7 +41,9 @@ func voteThreadRead(r *http.Request, ps map[string]string) (in voteThreadInput, 
 }
 
 func voteThreadGetThread(in voteThreadInput, db *sql.DB) (r voteThreadGetThreadInfo, err error) {
-	if !in.HasId {
+	if in.HasId {
+		r.Id = in.Id
+	} else {
 		sqlQuery := "SELECT id FROM threads WHERE slug = $1"
 		err = db.QueryRow(sqlQuery, in.Slug).Scan(&r.Id)
 	}
@@ -49,10 +51,10 @@ func voteThreadGetThread(in voteThreadInput, db *sql.DB) (r voteThreadGetThreadI
 }
 
 func voteThreadAction(w http.ResponseWriter, in voteThreadInput, db *sql.DB) {
-	r, err := voteThreadGetThread(in, db)
+	threadInfo, err := voteThreadGetThread(in, db)
 	if err != nil {
-		log.Println("error: apithread.voteThreadAction: voteThreadGetThread:", err)
-		w.WriteHeader(500)
+		errJson := api.Error{Message: "Can't find thread"}
+		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}
 
@@ -60,12 +62,25 @@ func voteThreadAction(w http.ResponseWriter, in voteThreadInput, db *sql.DB) {
 
 	sqlQuery := `
 	INSERT INTO votes (nickname, threadId, voice) VALUES ($1, $2, $3)
-	ON CONFLICT (nickname, threadId) DO UPDATE SET voice = excluded.voice
+	ON CONFLICT (nickname, threadId) DO UPDATE SET voice = EXCLUDED.voice
     `
 
-	_, err = db.Exec(sqlQuery, in.Nickname, r.Id, in.Voice)
+	_, err = db.Exec(sqlQuery, in.Nickname, threadInfo.Id, in.Voice)
 	if err != nil {
 		log.Println("error: apithread.voteThreadAction: INSERT:", err)
+		w.WriteHeader(500)
+		return
+	}
+
+	sqlQuery = "SELECT id, title, author, forumSlug, \"message\", votesCount, slug, createdAt FROM threads"
+	if in.HasId {
+		sqlQuery += " WHERE id = $1"
+	} else {
+		sqlQuery += " WHERE slug = $1"
+	}
+	err = db.QueryRow(sqlQuery, in.Slug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.ForumSlug, &out.Message, &out.VotesCount, &out.Slug, &out.CreatedDateStr)
+	if err != nil {
+		log.Println("error: apithread.showThreadAction: SELECT:", err)
 		w.WriteHeader(500)
 		return
 	}

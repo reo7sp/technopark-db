@@ -5,8 +5,9 @@ import (
 	"github.com/reo7sp/technopark-db/apiutil"
 	"database/sql"
 	"log"
-	"errors"
 	"github.com/reo7sp/technopark-db/api"
+	"strconv"
+	"fmt"
 )
 
 func MakeCreatePostHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -42,12 +43,12 @@ type createPostOutput []createPostOutputItem
 
 type createPostGetThreadInfo struct {
 	Id        int64
-	Slug      string
+	Slug      *string
 	ForumSlug string
 }
 
 func createPostRead(r *http.Request, ps map[string]string) (in createPostInput, err error) {
-	resolveSlugOrIdInput(ps["slug"], &in.slugOrIdInput)
+	resolveSlugOrIdInput(ps["slug_or_id"], &in.slugOrIdInput)
 
 	err = apiutil.ReadJsonObject(r, &in.Posts)
 	if err != nil {
@@ -55,7 +56,6 @@ func createPostRead(r *http.Request, ps map[string]string) (in createPostInput, 
 	}
 
 	if len(in.Posts) == 0 {
-		err = errors.New("posts in empty")
 		return
 	}
 
@@ -76,13 +76,26 @@ func createPostGetThread(in createPostInput, db *sql.DB) (r createPostGetThreadI
 		sqlQuery := "SELECT slug, forumSlug FROM threads WHERE id = $1"
 		err = db.QueryRow(sqlQuery, in.Id).Scan(&r.Slug, &r.ForumSlug)
 	} else {
+		r.Slug = &in.Slug
 		sqlQuery := "SELECT id, forumSlug FROM threads WHERE slug = $1"
 		err = db.QueryRow(sqlQuery, in.Slug).Scan(&r.Id, &r.ForumSlug)
 	}
 	return
 }
 
+func createPostGenerateNextPlaceholder(i *int64) string {
+	*i = *i + 1
+	return "$" + strconv.FormatInt(*i, 10)
+}
+
 func createPostAction(w http.ResponseWriter, in createPostInput, db *sql.DB) {
+	out := make(createPostOutput, 0, len(in.Posts))
+
+	if len(in.Posts) == 0 {
+		apiutil.WriteJsonObject(w, out, 201)
+		return
+	}
+
 	threadInfo, err := createPostGetThread(in, db)
 	if err != nil {
 		log.Println("error: apithread.createPostAction: createPostGetThread:", err)
@@ -90,12 +103,17 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *sql.DB) {
 		return
 	}
 
-	out := make(createPostOutput, 0, len(in.Posts))
-
 	sqlQuery := "INSERT INTO posts (parent, author, \"message\", forumSlug, threadId, threadSlug) VALUES"
-	sqlValues := make([]interface{}, 0, 5*len(in.Posts))
+	sqlValues := make([]interface{}, 0, 6*len(in.Posts))
+	placeholderIndex := int64(0)
 	for i, post := range in.Posts {
-		sqlQuery += " (?, ?, ?, ?, ?)"
+		sqlQuery += fmt.Sprintf(" (%s, %s, %s, %s, %s, %s)",
+			createPostGenerateNextPlaceholder(&placeholderIndex),
+			createPostGenerateNextPlaceholder(&placeholderIndex),
+			createPostGenerateNextPlaceholder(&placeholderIndex),
+			createPostGenerateNextPlaceholder(&placeholderIndex),
+			createPostGenerateNextPlaceholder(&placeholderIndex),
+			createPostGenerateNextPlaceholder(&placeholderIndex))
 		if i != len(in.Posts)-1 {
 			sqlQuery += ","
 		}
@@ -103,7 +121,7 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *sql.DB) {
 	}
 	sqlQuery += " RETURNING id, createdAt"
 
-	rows, err := db.Query(sqlQuery, sqlValues)
+	rows, err := db.Query(sqlQuery, sqlValues...)
 	if err != nil {
 		log.Println("error: apithread.createPostAction: INSERT:", err)
 		w.WriteHeader(500)
@@ -113,19 +131,23 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *sql.DB) {
 	defer rows.Close()
 	for i := 0; rows.Next(); i++ {
 		var outItem createPostOutputItem
+
 		err = rows.Scan(&outItem.Id, &outItem.CreatedDateStr)
 		if err != nil {
 			log.Println("error: apithread.createPostAction: INSERT scan iter:", err)
 			w.WriteHeader(500)
 			return
 		}
+
 		outItem.ParentPostId = in.Posts[i].Parent
 		outItem.AuthorNickname = in.Posts[i].Author
 		outItem.Message = in.Posts[i].Message
 		outItem.IsEdited = false
 		outItem.ForumSlug = threadInfo.ForumSlug
 		outItem.ThreadId = threadInfo.Id
+
+		out = append(out, outItem)
 	}
 
-	apiutil.WriteJsonObject(w, out, 200)
+	apiutil.WriteJsonObject(w, out, 201)
 }

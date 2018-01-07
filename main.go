@@ -24,8 +24,8 @@ func main() {
 	router.POST("/api/forum/create", apiforum.MakeCreateForumHandler(db))
 	router.GET("/api/forum/:slug/details", apiforum.MakeShowForumHandler(db))
 	router.POST("/api/forum/:slug/create", apiforum.MakeCreateThreadHandler(db))
-	router.POST("/api/forum/:slug/users", apiforum.MakeShowUsersHandler(db))
-	router.POST("/api/forum/:slug/threads", apiforum.MakeShowThreadsHandler(db))
+	router.GET("/api/forum/:slug/users", apiforum.MakeShowUsersHandler(db))
+	router.GET("/api/forum/:slug/threads", apiforum.MakeShowThreadsHandler(db))
 
 	router.GET("/api/post/:id/threads", apipost.MakeShowPostHandler(db))
 	router.POST("/api/post/:id/threads", apipost.MakeEditPostHandler(db))

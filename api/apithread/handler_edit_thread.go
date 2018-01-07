@@ -56,7 +56,7 @@ func editThreadAction(w http.ResponseWriter, in editThreadInput, db *sql.DB) {
 		return
 	}
 	if c, _ := r.RowsAffected(); c == 0 {
-		errJson := api.Error{Message: "Can't find thread with slug or id " + in.Slug}
+		errJson := api.Error{Message: "Can't find thread"}
 		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}

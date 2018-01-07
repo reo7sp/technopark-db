@@ -6,6 +6,8 @@ import (
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/dbutil"
+	"strconv"
 )
 
 func MakeEditUserHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -40,19 +42,58 @@ func editUserRead(r *http.Request, ps map[string]string) (in editUserInput, err 
 func editUserAction(w http.ResponseWriter, in editUserInput, db *sql.DB) {
 	var out editUserOutput
 
-	sqlQuery := "UPDATE users SET fullname = $1, about = $2, email = $3 WHERE nickname = $4"
-	_, err := db.Exec(sqlQuery, in.Fullname, in.About, in.Email, in.Nickname)
+	sqlQuery := "UPDATE users SET"
+	sqlValues := make([]interface{}, 0, 4)
+	if in.Fullname != "" {
+		sqlValues = append(sqlValues, in.Fullname)
+		sqlQuery += " fullname = $1"
+	}
+	if in.About != "" {
+		if len(sqlValues) != 0 {
+			sqlQuery += ","
+		}
+		sqlValues = append(sqlValues, in.About)
+		sqlQuery += " about = $" + strconv.FormatInt(int64(len(sqlValues)), 10)
+	}
+	if in.Email != "" {
+		if len(sqlValues) != 0 {
+			sqlQuery += ","
+		}
+		sqlValues = append(sqlValues, in.Email)
+		sqlQuery += " email = $" + strconv.FormatInt(int64(len(sqlValues)), 10)
+	}
+	if len(sqlValues) != 0 {
+		sqlValues = append(sqlValues, in.Nickname)
+		sqlQuery += " WHERE nickname = $" + strconv.FormatInt(int64(len(sqlValues)), 10)
+	}
 
+	if len(sqlValues) != 0 {
+		_, err := db.Exec(sqlQuery, sqlValues...)
+
+		if err != nil && dbutil.IsErrorAboutDublicate(err) {
+			errJson := api.Error{Message: "This email is already registered by user"}
+			apiutil.WriteJsonObject(w, errJson, 409)
+			return
+		}
+		if err != nil {
+			log.Println("error: apiuser.editUserAction: UPDATE:", err)
+			w.WriteHeader(500)
+			return
+		}
+	}
+
+	sqlQuery = "SELECT nickname, fullname, about, email FROM users WHERE nickname = $1"
+	err := db.QueryRow(sqlQuery, in.Nickname).Scan(&out.Nickname, &out.Fullname, &out.About, &out.Email)
+	if err != nil && dbutil.IsErrorAboutNotFound(err) {
+		errJson := api.Error{Message: "Can't find user"}
+		apiutil.WriteJsonObject(w, errJson, 404)
+		return
+	}
 	if err != nil {
-		log.Println("error: apiuser.editUserAction: UPDATE:", err)
+		log.Println("error: apiuser.editUserAction: SELECT:", err)
 		w.WriteHeader(500)
 		return
 	}
-
-	out.Nickname = in.Nickname
-	out.Fullname = in.Fullname
-	out.About = in.About
-	out.Email = in.Email
 
 	apiutil.WriteJsonObject(w, out, 200)
 }

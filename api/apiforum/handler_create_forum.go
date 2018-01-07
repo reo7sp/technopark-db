@@ -30,22 +30,38 @@ type createForumInput struct {
 
 type createForumOutput api.ForumModel
 
+type createForumGetUserInfo struct {
+	Nickname string
+}
+
 func createForumRead(r *http.Request, ps map[string]string) (in createForumInput, err error) {
 	err = apiutil.ReadJsonObject(r, &in)
 	return
 }
 
+func createForumGetUser(in createForumInput, db *sql.DB) (r createForumGetUserInfo, err error) {
+	sqlQuery := "SELECT nickname FROM users WHERE nickname = $1"
+	err = db.QueryRow(sqlQuery, in.User).Scan(&r.Nickname)
+	return
+}
+
 func createForumAction(w http.ResponseWriter, in createForumInput, db *sql.DB) {
+	forumInfo, err := createForumGetUser(in, db)
+
+	if err != nil && dbutil.IsErrorAboutNotFound(err) {
+		errJson := api.Error{Message: "Can't find user"}
+		apiutil.WriteJsonObject(w, errJson, 404)
+		return
+	}
+
 	var out createForumOutput
 
-	out.Slug = in.Slug
-
 	sqlQuery := "INSERT INTO forums (title, \"user\", slug) VALUES ($1, $2, $3)"
-	_, err := db.Exec(sqlQuery, in.Title, in.User, in.Slug)
+	_, err = db.Exec(sqlQuery, in.Title, forumInfo.Nickname, in.Slug)
 
 	if err != nil && dbutil.IsErrorAboutDublicate(err) {
-		sqlQuery := "SELECT title, \"user\", postsCount, threadsCount FROM forums WHERE slug = $1"
-		err := db.QueryRow(sqlQuery, in.Slug).Scan(&out.Title, &out.User, &out.PostsCount, &out.ThreadsCount)
+		sqlQuery := "SELECT slug, title, \"user\", postsCount, threadsCount FROM forums WHERE slug = $1"
+		err := db.QueryRow(sqlQuery, in.Slug).Scan(&out.Slug, &out.Title, &out.User, &out.PostsCount, &out.ThreadsCount)
 
 		if err != nil {
 			log.Println("error: apiforum.createForumAction: SELECT:", err)
@@ -62,10 +78,11 @@ func createForumAction(w http.ResponseWriter, in createForumInput, db *sql.DB) {
 		return
 	}
 
+	out.Slug = in.Slug
 	out.Title = in.Title
-	out.User = in.User
+	out.User = forumInfo.Nickname
 	out.PostsCount = 0
 	out.ThreadsCount = 0
 
-	apiutil.WriteJsonObject(w, out, 200)
+	apiutil.WriteJsonObject(w, out, 201)
 }
