@@ -4,7 +4,7 @@ import (
 	"regexp"
 )
 
-type Error struct {
+type ErrorModel struct {
 	Message string
 }
 
@@ -24,7 +24,7 @@ func (f *ForumModel) IsValid() bool {
 
 type PostModel struct {
 	Id             int64  `json:"id"`
-	ParentPostId   int64  `json:"parent"`
+	ParentPostId   *int64 `json:"parent"`
 	AuthorNickname string `json:"author"`
 	Message        string `json:"message"`
 	IsEdited       bool   `json:"isEdited"`

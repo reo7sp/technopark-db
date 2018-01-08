@@ -2,4 +2,4 @@
 set -e
 
 psql postgres --command "DROP DATABASE IF EXISTS technopark_db"
-psql postgres --command "CREATE DATABASE technopark_db"
+psql postgres --command "CREATE DATABASE technopark_db WITH ENCODING='UTF8' LC_CTYPE='en_US.UTF-8' LC_COLLATE='en_US.UTF-8' TEMPLATE=template0;"

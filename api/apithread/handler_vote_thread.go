@@ -6,6 +6,7 @@ import (
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/dbutil"
 )
 
 func MakeVoteThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -53,7 +54,7 @@ func voteThreadGetThread(in voteThreadInput, db *sql.DB) (r voteThreadGetThreadI
 func voteThreadAction(w http.ResponseWriter, in voteThreadInput, db *sql.DB) {
 	threadInfo, err := voteThreadGetThread(in, db)
 	if err != nil {
-		errJson := api.Error{Message: "Can't find thread"}
+		errJson := api.ErrorModel{Message: "Can't find thread"}
 		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}
@@ -64,8 +65,13 @@ func voteThreadAction(w http.ResponseWriter, in voteThreadInput, db *sql.DB) {
 	INSERT INTO votes (nickname, threadId, voice) VALUES ($1, $2, $3)
 	ON CONFLICT (nickname, threadId) DO UPDATE SET voice = EXCLUDED.voice
     `
-
 	_, err = db.Exec(sqlQuery, in.Nickname, threadInfo.Id, in.Voice)
+
+	if err != nil && dbutil.IsErrorAboutFailedForeignKey(err) {
+		errJson := api.ErrorModel{Message: "Can't find thread"}
+		apiutil.WriteJsonObject(w, errJson, 404)
+		return
+	}
 	if err != nil {
 		log.Println("error: apithread.voteThreadAction: INSERT:", err)
 		w.WriteHeader(500)

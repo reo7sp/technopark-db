@@ -6,6 +6,7 @@ import (
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/dbutil"
 )
 
 func MakeShowThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -41,7 +42,14 @@ func showThreadAction(w http.ResponseWriter, in showThreadInput, db *sql.DB) {
 	} else {
 		sqlQuery += " WHERE slug = $1"
 	}
+
 	err := db.QueryRow(sqlQuery, in.Slug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.ForumSlug, &out.Message, &out.VotesCount, &out.Slug, &out.CreatedDateStr)
+
+	if err != nil && dbutil.IsErrorAboutNotFound(err) {
+		errJson := api.ErrorModel{Message: "Can't find thread"}
+		apiutil.WriteJsonObject(w, errJson, 404)
+		return
+	}
 	if err != nil {
 		log.Println("error: apithread.showThreadAction: SELECT:", err)
 		w.WriteHeader(500)

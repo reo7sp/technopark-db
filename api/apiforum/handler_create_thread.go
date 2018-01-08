@@ -62,7 +62,7 @@ func createThreadGetForum(in createThreadInput, db *sql.DB) (r createThreadGetFo
 func createThreadAction(w http.ResponseWriter, in createThreadInput, db *sql.DB) {
 	forumInfo, err := createThreadGetForum(in, db)
 	if err != nil {
-		errJson := api.Error{Message: "Can't find forum"}
+		errJson := api.ErrorModel{Message: "Can't find forum"}
 		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}
@@ -79,7 +79,7 @@ func createThreadAction(w http.ResponseWriter, in createThreadInput, db *sql.DB)
 	err = db.QueryRow(sqlQuery, in.ThreadSlug, in.Title, in.Author, in.ForumSlug, in.Message, in.CreatedAtStr).Scan(&out.Id)
 
 	if err != nil && dbutil.IsErrorAboutFailedForeignKey(err) {
-		errJson := api.Error{Message: "Can't find user"}
+		errJson := api.ErrorModel{Message: "Can't find user"}
 		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}

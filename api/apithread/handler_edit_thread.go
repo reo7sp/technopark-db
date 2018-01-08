@@ -6,6 +6,7 @@ import (
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/dbutil"
 )
 
 func MakeEditThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -24,8 +25,8 @@ func MakeEditThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, 
 type editThreadInput struct {
 	slugOrIdInput
 
-	Title   string `json:"title"`
-	Message string `json:"message"`
+	Title   *string `json:"title"`
+	Message *string `json:"message"`
 }
 
 type editThreadOutput api.ThreadModel
@@ -39,7 +40,7 @@ func editThreadRead(r *http.Request, ps map[string]string) (in editThreadInput, 
 func editThreadAction(w http.ResponseWriter, in editThreadInput, db *sql.DB) {
 	var out editThreadOutput
 
-	sqlQuery := "UPDATE threads SET title = $1, \"message\" = $2"
+	sqlQuery := "UPDATE threads SET title = COALESCE($1, title), \"message\" = COALESCE($2, \"message\")"
 	sqlFields := []interface{}{in.Title, in.Message, nil}
 	if in.HasId {
 		sqlQuery += " WHERE id = $3"
@@ -48,16 +49,18 @@ func editThreadAction(w http.ResponseWriter, in editThreadInput, db *sql.DB) {
 		sqlQuery += " WHERE slug = $3"
 		sqlFields[2] = in.Slug
 	}
+	sqlQuery += " RETURNING author, createdAt, forumSlug, id, \"message\", slug, title"
 
-	r, err := db.Exec(sqlQuery, sqlFields...)
+	err := db.QueryRow(sqlQuery, sqlFields...).Scan(&out.AuthorNickname, &out.CreatedDateStr, &out.ForumSlug, &out.Id, &out.Message, &out.Slug, &out.Title)
+
+	if err != nil && dbutil.IsErrorAboutNotFound(err) {
+		errJson := api.ErrorModel{Message: "Can't find thread"}
+		apiutil.WriteJsonObject(w, errJson, 404)
+		return
+	}
 	if err != nil {
 		log.Println("error: apithread.editThreadAction: UPDATE:", err)
 		w.WriteHeader(500)
-		return
-	}
-	if c, _ := r.RowsAffected(); c == 0 {
-		errJson := api.Error{Message: "Can't find thread"}
-		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}
 

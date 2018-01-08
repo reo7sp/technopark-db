@@ -40,7 +40,7 @@ func showUserAction(w http.ResponseWriter, in showUserInput, db *sql.DB) {
 	err := db.QueryRow(sqlQuery, in.Nickname).Scan(&out.Nickname, &out.Fullname, &out.About, &out.Email)
 
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {
-		errJson := api.Error{Message: "Can't find user"}
+		errJson := api.ErrorModel{Message: "Can't find user"}
 		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}

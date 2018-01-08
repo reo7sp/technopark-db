@@ -45,7 +45,7 @@ func showForumAction(w http.ResponseWriter, in showForumInput, db *sql.DB) {
 	err := db.QueryRow(sqlQuery, in.Slug).Scan(&out.Slug, &out.Title, &out.User, &out.PostsCount, &out.ThreadsCount)
 
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {
-		errJson := api.Error{Message: "Can't find forum"}
+		errJson := api.ErrorModel{Message: "Can't find forum"}
 		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}

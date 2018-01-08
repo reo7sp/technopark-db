@@ -8,6 +8,7 @@ import (
 	"github.com/reo7sp/technopark-db/api"
 	"strconv"
 	"fmt"
+	"github.com/reo7sp/technopark-db/dbutil"
 )
 
 func MakeCreatePostHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -28,7 +29,7 @@ type createPostInputItem struct {
 	Author  string `json:"author"`
 	Message string `json:"message"`
 
-	ParentOrNil interface{} `json:"-"`
+	ParentOrNil *int64 `json:"-"`
 }
 
 type createPostInput struct {
@@ -59,15 +60,47 @@ func createPostRead(r *http.Request, ps map[string]string) (in createPostInput, 
 		return
 	}
 
-	for _, post := range in.Posts {
+	for i, post := range in.Posts {
 		if post.Parent == 0 {
 			post.ParentOrNil = nil
 		} else {
-			post.ParentOrNil = post.Parent
+			in.Posts[i].ParentOrNil = &in.Posts[i].Parent
 		}
 	}
 
 	return
+}
+
+func createPostCheckPostsParents(threadId int64, Posts []createPostInputItem, db *sql.DB) (bool, error) {
+	sqlQuery := "SELECT threadId FROM posts WHERE id IN (0"
+	needToExecQuery := false
+	for _, post := range Posts {
+		if post.Parent == 0 {
+			continue
+		}
+		needToExecQuery = true
+		sqlQuery += ", " + strconv.FormatInt(post.Parent, 10)
+	}
+	sqlQuery += ")"
+
+	if !needToExecQuery {
+		return true, nil
+	}
+
+	rows, err := db.Query(sqlQuery)
+	if err != nil {
+		return false, err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		rows.Scan(&id)
+		if id != threadId {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func createPostGetThread(in createPostInput, db *sql.DB) (r createPostGetThreadInfo, err error) {
@@ -91,17 +124,35 @@ func createPostGenerateNextPlaceholder(i *int64) string {
 func createPostAction(w http.ResponseWriter, in createPostInput, db *sql.DB) {
 	out := make(createPostOutput, 0, len(in.Posts))
 
-	if len(in.Posts) == 0 {
-		apiutil.WriteJsonObject(w, out, 201)
+	threadInfo, err := createPostGetThread(in, db)
+	if err != nil && dbutil.IsErrorAboutNotFound(err) {
+		errJson := api.ErrorModel{Message: "Can't find post thread"}
+		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}
-
-	threadInfo, err := createPostGetThread(in, db)
 	if err != nil {
 		log.Println("error: apithread.createPostAction: createPostGetThread:", err)
 		w.WriteHeader(500)
 		return
 	}
+
+	if len(in.Posts) == 0 {
+		apiutil.WriteJsonObject(w, out, 201)
+		return
+	}
+
+	ok, err := createPostCheckPostsParents(threadInfo.Id, in.Posts, db)
+	if err != nil {
+		log.Println("error: apithread.createPostAction: createPostCheckPostsParents:", err)
+		w.WriteHeader(500)
+		return
+	}
+	if !ok {
+		errJson := api.ErrorModel{Message: "Parent post was created in another thread"}
+		apiutil.WriteJsonObject(w, errJson, 409)
+		return
+	}
+
 
 	sqlQuery := "INSERT INTO posts (parent, author, \"message\", forumSlug, threadId, threadSlug) VALUES"
 	sqlValues := make([]interface{}, 0, 6*len(in.Posts))
@@ -122,7 +173,20 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *sql.DB) {
 	sqlQuery += " RETURNING id, createdAt"
 
 	rows, err := db.Query(sqlQuery, sqlValues...)
+
 	if err != nil {
+		ok, constaint := dbutil.IsErrorAboutFailedForeignKeyReturnConstaint(err)
+
+		if ok && constaint == "posts_parent_fkey" {
+			errJson := api.ErrorModel{Message: "Parent post was created in another thread"}
+			apiutil.WriteJsonObject(w, errJson, 409)
+			return
+		}
+		if ok && constaint == "posts_author_fkey" {
+			errJson := api.ErrorModel{Message: "Can't find post author"}
+			apiutil.WriteJsonObject(w, errJson, 404)
+			return
+		}
 		log.Println("error: apithread.createPostAction: INSERT:", err)
 		w.WriteHeader(500)
 		return
@@ -139,7 +203,7 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *sql.DB) {
 			return
 		}
 
-		outItem.ParentPostId = in.Posts[i].Parent
+		outItem.ParentPostId = &in.Posts[i].Parent
 		outItem.AuthorNickname = in.Posts[i].Author
 		outItem.Message = in.Posts[i].Message
 		outItem.IsEdited = false

@@ -31,6 +31,15 @@ func IsErrorAboutFailedForeignKey(err error) bool {
 	return false
 }
 
+func IsErrorAboutFailedForeignKeyReturnConstaint(err error) (bool, string) {
+	if err, ok := err.(*pq.Error); ok {
+		if err.Code == "23503" {
+			return true, err.Constraint
+		}
+	}
+	return false, ""
+}
+
 func IsErrorAboutNotFound(err error) bool {
 	return err.Error() == "sql: no rows in result set"
 }

@@ -3,10 +3,10 @@ CREATE EXTENSION IF NOT EXISTS citext;
 -- tables
 
 CREATE TABLE IF NOT EXISTS users (
-  nickname CITEXT       NOT NULL PRIMARY KEY,
-  fullname VARCHAR(255) NOT NULL,
-  email    CITEXT       NOT NULL UNIQUE,
-  about    TEXT         NOT NULL DEFAULT ''
+  nickname CITEXT COLLATE ucs_basic     NOT NULL PRIMARY KEY,
+  fullname VARCHAR(255)                 NOT NULL,
+  email    CITEXT                       NOT NULL UNIQUE,
+  about    TEXT                         NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS forums (
@@ -30,16 +30,16 @@ CREATE TABLE IF NOT EXISTS threads (
 );
 
 CREATE TABLE IF NOT EXISTS posts (
-  id         BIGSERIAL NOT NULL PRIMARY KEY,
+  id         BIGSERIAL                NOT NULL PRIMARY KEY,
   parent     BIGINT REFERENCES posts (id),
-  author     CITEXT    NOT NULL REFERENCES users (nickname),
-  "message"  TEXT      NOT NULL,
-  isEdited   BOOLEAN   NOT NULL DEFAULT FALSE,
-  forumSlug  CITEXT    NOT NULL REFERENCES forums (slug),
-  threadId   INTEGER   NOT NULL REFERENCES threads (id),
+  author     CITEXT                   NOT NULL REFERENCES users (nickname),
+  "message"  TEXT                     NOT NULL,
+  isEdited   BOOLEAN                  NOT NULL DEFAULT FALSE,
+  forumSlug  CITEXT                   NOT NULL REFERENCES forums (slug),
+  threadId   INTEGER                  NOT NULL REFERENCES threads (id),
   threadSlug CITEXT REFERENCES threads (slug),
-  createdAt  TIMESTAMP NOT NULL DEFAULT NOW(),
-  path       BIGINT [] NOT NULL DEFAULT ARRAY [] :: BIGINT [],
+  createdAt  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  path       BIGINT []                NOT NULL DEFAULT ARRAY [] :: BIGINT [],
   rootPostNo BIGINT
 );
 
@@ -50,12 +50,18 @@ CREATE TABLE IF NOT EXISTS votes (
   PRIMARY KEY (nickname, threadId)
 );
 
+CREATE TABLE IF NOT EXISTS forumUsers (
+  nickname  CITEXT NOT NULL REFERENCES users (nickname),
+  forumSlug CITEXT NOT NULL REFERENCES forums (slug),
+  PRIMARY KEY (nickname, forumSlug)
+);
+
 -- indexes
 
 
 -- triggers
 
-CREATE OR REPLACE FUNCTION func_forums_incrementPostsCount()
+CREATE OR REPLACE FUNCTION func_posts_incrementForumPostsCount()
   RETURNS TRIGGER AS
 $$
 BEGIN
@@ -68,17 +74,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trig_forums_incrementPostsCount
+DROP TRIGGER IF EXISTS trig_posts_incrementForumPostsCount
 ON posts;
 
-CREATE TRIGGER trig_forums_incrementPostsCount
+CREATE TRIGGER trig_posts_incrementForumPostsCount
   AFTER INSERT
   ON posts
   FOR EACH ROW
-EXECUTE PROCEDURE func_forums_incrementPostsCount();
+EXECUTE PROCEDURE func_posts_incrementForumPostsCount();
 
 
-CREATE OR REPLACE FUNCTION func_forums_decrementPostsCount()
+CREATE OR REPLACE FUNCTION func_posts_decrementForumPostsCount()
   RETURNS TRIGGER AS
 $$
 BEGIN
@@ -91,17 +97,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trig_forums_decrementPostsCount
+DROP TRIGGER IF EXISTS trig_posts_decrementForumPostsCount
 ON posts;
 
-CREATE TRIGGER trig_forums_decrementPostsCount
+CREATE TRIGGER trig_posts_decrementForumPostsCount
   AFTER DELETE
   ON posts
   FOR EACH ROW
-EXECUTE PROCEDURE func_forums_decrementPostsCount();
+EXECUTE PROCEDURE func_posts_decrementForumPostsCount();
 
 
-CREATE OR REPLACE FUNCTION func_forums_incrementThreadsCount()
+CREATE OR REPLACE FUNCTION func_threads_incrementForumThreadsCount()
   RETURNS TRIGGER AS
 $$
 BEGIN
@@ -114,17 +120,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trig_forums_incrementThreadsCount
+DROP TRIGGER IF EXISTS trig_threads_incrementForumThreadsCount
 ON threads;
 
-CREATE TRIGGER trig_forums_incrementThreadsCount
+CREATE TRIGGER trig_threads_incrementForumThreadsCount
   AFTER INSERT
   ON threads
   FOR EACH ROW
-EXECUTE PROCEDURE func_forums_incrementThreadsCount();
+EXECUTE PROCEDURE func_threads_incrementForumThreadsCount();
 
 
-CREATE OR REPLACE FUNCTION func_forums_decrementThreadsCount()
+CREATE OR REPLACE FUNCTION func_threads_decrementForumThreadsCount()
   RETURNS TRIGGER AS
 $$
 BEGIN
@@ -137,14 +143,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trig_forums_decrementThreadsCount
+DROP TRIGGER IF EXISTS trig_threads_decrementForumThreadsCount
 ON threads;
 
-CREATE TRIGGER trig_forums_decrementThreadsCount
+CREATE TRIGGER trig_threads_decrementForumThreadsCount
   AFTER DELETE
   ON threads
   FOR EACH ROW
-EXECUTE PROCEDURE func_forums_decrementThreadsCount();
+EXECUTE PROCEDURE func_threads_decrementForumThreadsCount();
 
 
 CREATE OR REPLACE FUNCTION func_posts_constructParentPath()
@@ -165,7 +171,7 @@ BEGIN
 
     UPDATE threads
     SET rootPostsCount = threadRootPostsCount + 1
-    WHERE id = NEW.id;
+    WHERE id = NEW.threadId;
 
     UPDATE posts
     SET path = ARRAY [NEW.id], rootPostNo = threadRootPostsCount
@@ -173,10 +179,10 @@ BEGIN
 
   ELSE
 
-    SELECT rootPostsCount
+    SELECT rootPostNo
     INTO threadRootPostsCount
-    FROM threads
-    WHERE threads.id = NEW.threadId;
+    FROM posts
+    WHERE id = NEW.parent;
 
     SELECT path
     INTO parentPath
@@ -203,7 +209,7 @@ CREATE TRIGGER trig_posts_constructParentPath
 EXECUTE PROCEDURE func_posts_constructParentPath();
 
 
-CREATE OR REPLACE FUNCTION func_threads_insertVote()
+CREATE OR REPLACE FUNCTION func_votes_insertThreadVote()
   RETURNS TRIGGER
 AS $$
 BEGIN
@@ -216,17 +222,17 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trig_threads_insertVote
+DROP TRIGGER IF EXISTS trig_votes_insertThreadVote
 ON votes;
 
-CREATE TRIGGER trig_threads_insertVote
+CREATE TRIGGER trig_votes_insertThreadVote
   AFTER INSERT
   ON votes
   FOR EACH ROW
-EXECUTE PROCEDURE func_threads_insertVote();
+EXECUTE PROCEDURE func_votes_insertThreadVote();
 
 
-CREATE OR REPLACE FUNCTION func_threads_updateVote()
+CREATE OR REPLACE FUNCTION func_votes_updateThreadVote()
   RETURNS TRIGGER
 AS $$
 BEGIN
@@ -239,11 +245,55 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trig_threads_updateVote
+DROP TRIGGER IF EXISTS trig_votes_updateThreadVote
 ON votes;
 
-CREATE TRIGGER trig_threads_updateVote
+CREATE TRIGGER trig_votes_updateThreadVote
   AFTER UPDATE
   ON votes
   FOR EACH ROW
-EXECUTE PROCEDURE func_threads_updateVote();
+EXECUTE PROCEDURE func_votes_updateThreadVote();
+
+
+CREATE OR REPLACE FUNCTION func_posts_insertForumUser()
+  RETURNS TRIGGER
+AS $$
+BEGIN
+
+  INSERT INTO forumUsers (nickname, forumSlug) VALUES (NEW.author, NEW.forumSlug)
+  ON CONFLICT DO NOTHING;
+
+  RETURN NULL;
+END
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trig_posts_insertForumUser
+ON posts;
+
+CREATE TRIGGER trig_posts_insertForumUser
+  AFTER INSERT
+  ON posts
+  FOR EACH ROW
+EXECUTE PROCEDURE func_posts_insertForumUser();
+
+
+CREATE OR REPLACE FUNCTION func_threads_insertForumUser()
+  RETURNS TRIGGER
+AS $$
+BEGIN
+
+  INSERT INTO forumUsers (nickname, forumSlug) VALUES (NEW.author, NEW.forumSlug)
+  ON CONFLICT DO NOTHING;
+
+  RETURN NULL;
+END
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trig_threads_insertForumUser
+ON threads;
+
+CREATE TRIGGER trig_threads_insertForumUser
+  AFTER INSERT
+  ON threads
+  FOR EACH ROW
+EXECUTE PROCEDURE func_threads_insertForumUser();

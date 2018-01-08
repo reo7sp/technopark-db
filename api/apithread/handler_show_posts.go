@@ -7,6 +7,8 @@ import (
 	"log"
 	"github.com/reo7sp/technopark-db/api"
 	"strconv"
+	"fmt"
+	"github.com/reo7sp/technopark-db/dbutil"
 )
 
 func MakeShowPostsHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -29,6 +31,8 @@ type showPostsInput struct {
 	Sort   string `json:"sort"`
 	Limit  int64  `json:"limit"`
 	IsDesc bool   `json:"desc"`
+
+	Order string `json:"-"`
 }
 
 type showPostsOutputItem api.PostModel
@@ -42,21 +46,59 @@ func showPostsRead(r *http.Request, ps map[string]string) (in showPostsInput, er
 
 	in.Limit, err = strconv.ParseInt(query.Get("limit"), 10, 64)
 	if err != nil {
-		err = nil
-		in.Limit = -1
+		return
 	}
 	in.Since, err = strconv.ParseInt(query.Get("since"), 10, 64)
 	if err != nil {
 		err = nil
-		in.Since = 0
+		in.Since = -1
 	}
 	in.Sort = query.Get("sort")
+	if in.Sort == "" {
+		in.Sort = "flat"
+	}
 	in.IsDesc = query.Get("desc") == "true"
+	if in.IsDesc {
+		in.Order = "DESC"
+	} else {
+		in.Order = "ASC"
+	}
 
 	return
 }
 
+func showPostsCheckThreadExists(in slugOrIdInput, db *sql.DB) (bool, error) {
+	sqlQuery := "SELECT id FROM threads WHERE"
+	if in.HasId {
+		sqlQuery += " id = $1"
+	} else {
+		sqlQuery += " slug = $1"
+	}
+	var i int64
+	err := db.QueryRow(sqlQuery, in.Slug).Scan(&i)
+
+	if err != nil && dbutil.IsErrorAboutNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func showPostsAction(w http.ResponseWriter, in showPostsInput, db *sql.DB) {
+	doesThreadExists, err := showPostsCheckThreadExists(in.slugOrIdInput, db)
+	if err != nil {
+		log.Println("error: apithread.showPostsAction: showPostsCheckThreadExists:", err)
+		w.WriteHeader(500)
+		return
+	}
+	if !doesThreadExists {
+		errJson := api.ErrorModel{Message: "Can't find thread"}
+		apiutil.WriteJsonObject(w, errJson, 404)
+		return
+	}
+
 	var out showPostsOutput
 
 	if in.Limit != -1 {
@@ -65,52 +107,127 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *sql.DB) {
 		out = make(showPostsOutput, 0)
 	}
 
-	sqlQuery := ""
-	if in.Sort == "parent_tree" && in.IsDesc {
-		sqlQuery += "WITH threadRootPostsCount AS (SELECT rootPostsCount FROM threads WHERE id = $1)"
-	}
-	sqlQuery += "SELECT id, parent, author, \"message\", isEdited, forumSlug, threadId, createdAt FROM posts"
-	if in.HasId {
-		sqlQuery += " WHERE (threadId = $1)"
-	} else {
-		sqlQuery += " WHERE (threadSlug = $1)"
-	}
-	sqlQuery += " AND (id >= $2)"
+	var sqlQuery string
+	var sqlValues []interface{}
+
 	switch in.Sort {
 	case "flat":
-		sqlQuery += " ORDER BY createdAt"
-		if in.IsDesc {
-			sqlQuery += " DESC"
-		} else {
-			sqlQuery += " ASC"
-		}
-		sqlQuery += " LIMIT $3"
+		sqlQuery = fmt.Sprintf(`
+
+		SELECT id, parent, author, "message", isEdited, forumSlug, threadId, createdAt FROM posts
+		WHERE (
+			CASE WHEN $1 = TRUE
+			THEN (threadId = $2)
+			ELSE (threadSlug = $3)
+			END
+		)
+		AND (
+			CASE WHEN $4 != -1
+			THEN (
+				CASE WHEN $6 = TRUE
+				THEN (id < $4)
+				ELSE (id > $4)
+				END
+			)
+			ELSE TRUE
+			END
+		)
+		ORDER BY createdAt %s, id %s
+		LIMIT $5
+
+		`, in.Order, in.Order)
+
+		sqlValues = []interface{}{in.HasId, in.Id, in.Slug, in.Since, in.Limit, in.IsDesc}
 
 	case "tree":
-		sqlQuery += " ORDER BY path"
-		if in.IsDesc {
-			sqlQuery += " DESC"
-		} else {
-			sqlQuery += " ASC"
-		}
-		sqlQuery += " LIMIT $3"
+		sqlQuery = fmt.Sprintf(`
+
+		SELECT id, parent, author, "message", isEdited, forumSlug, threadId, createdAt FROM posts
+		WHERE (
+			CASE WHEN $1 = TRUE
+			THEN (threadId = $2)
+			ELSE (threadSlug = $3)
+			END
+		)
+		AND (
+			CASE WHEN $4 != -1
+			THEN (
+				CASE WHEN $6 = TRUE
+				THEN (path < (SELECT p1.path FROM posts p1 WHERE p1.id = $4))
+				ELSE (path > (SELECT p1.path FROM posts p1 WHERE p1.id = $4))
+				END
+			)
+			ELSE TRUE
+			END
+		)
+		ORDER BY path %s, id %s
+		LIMIT $5
+
+		`, in.Order, in.Order)
+
+		sqlValues = []interface{}{in.HasId, in.Id, in.Slug, in.Since, in.Limit, in.IsDesc}
 
 	case "parent_tree":
-		if in.IsDesc {
-			sqlQuery += " AND (rootPostNo < $3)"
-		} else {
-			sqlQuery += " AND (rootPostNo >= threadRootPostsCount - $3)"
-		}
-		sqlQuery += " ORDER BY path"
-		if in.IsDesc {
-			sqlQuery += " DESC"
-		} else {
-			sqlQuery += " ASC"
-		}
+		sqlQuery = fmt.Sprintf(`
+
+		SELECT id, parent, author, "message", isEdited, forumSlug, threadId, createdAt FROM posts
+		WHERE (
+			CASE WHEN $1 = TRUE
+			THEN (threadId = $2)
+			ELSE (threadSlug = $3)
+			END
+		)
+		AND (
+			CASE WHEN $4 != -1
+			THEN (
+				CASE WHEN $6 = TRUE
+				THEN (path < (SELECT p1.path FROM posts p1 WHERE p1.id = $4))
+				ELSE (path > (SELECT p1.path FROM posts p1 WHERE p1.id = $4))
+				END
+			)
+			ELSE TRUE
+			END
+		)
+		AND (
+			CASE WHEN $6 = TRUE
+			THEN
+				rootPostNo >
+					(
+						SELECT t.rootPostsCount FROM threads t
+						WHERE (
+							CASE WHEN $1 = TRUE
+							THEN (t.id = $2)
+							ELSE (t.slug = $3)
+							END
+						)
+					)
+					- 1
+					- $5
+					- (
+						CASE WHEN $4 != -1
+						THEN (SELECT p1.rootPostNo FROM posts p1 WHERE p1.id = $4)
+						ELSE 0
+						END
+					)
+			ELSE
+				rootPostNo <
+					$5
+					+ (
+						CASE WHEN $4 != -1
+						THEN (SELECT p1.rootPostNo FROM posts p1 WHERE p1.id = $4)
+						ELSE 0
+						END
+					)
+			END
+		)
+		ORDER BY path %s, id %s
+
+		`, in.Order, in.Order)
+
+		sqlValues = []interface{}{in.HasId, in.Id, in.Slug, in.Since, in.Limit, in.IsDesc}
 	}
 
-	log.Println(sqlQuery, in.Slug, in.Since, in.Limit)
-	rows, err := db.Query(sqlQuery, in.Slug, in.Since, in.Limit)
+	rows, err := db.Query(sqlQuery, sqlValues...)
 	if err != nil {
 		log.Println("error: apithread.showPostsAction: SELECT start:", err)
 		w.WriteHeader(500)

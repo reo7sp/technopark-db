@@ -62,7 +62,7 @@ func showThreadsAction(w http.ResponseWriter, in showThreadsInput, db *sql.DB) {
 	forumSlug := ""
 	err := db.QueryRow("SELECT slug FROM forums WHERE slug = $1", in.Slug).Scan(&forumSlug)
 	if err != nil {
-		errJson := api.Error{Message: "Can't find forum"}
+		errJson := api.ErrorModel{Message: "Can't find forum"}
 		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}

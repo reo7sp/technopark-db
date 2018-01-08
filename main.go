@@ -27,8 +27,8 @@ func main() {
 	router.GET("/api/forum/:slug/users", apiforum.MakeShowUsersHandler(db))
 	router.GET("/api/forum/:slug/threads", apiforum.MakeShowThreadsHandler(db))
 
-	router.GET("/api/post/:id/threads", apipost.MakeShowPostHandler(db))
-	router.POST("/api/post/:id/threads", apipost.MakeEditPostHandler(db))
+	router.GET("/api/post/:id/details", apipost.MakeShowPostHandler(db))
+	router.POST("/api/post/:id/details", apipost.MakeEditPostHandler(db))
 
 	router.POST("/api/service/clear", apiservice.MakeClearDbHandler(db))
 	router.GET("/api/service/status", apiservice.MakeShowStatusHandler(db))
@@ -44,15 +44,15 @@ func main() {
 	router.POST("/api/user/:nickname/profile", apiuser.MakeEditUserHandler(db))
 
 	fileServ := http.FileServer(http.Dir("."))
-	router.GET("/swagger/", func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
+	router.GET("/swagger-ui/", func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		fileServ.ServeHTTP(w, r)
 	})
-	router.GET("/swagger/*path", func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
+	router.GET("/swagger-ui/*path", func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		fileServ.ServeHTTP(w, r)
 	})
 
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
-		http.Redirect(w, r, "/swagger", http.StatusMovedPermanently)
+		http.Redirect(w, r, "/swagger-ui", http.StatusMovedPermanently)
 	})
 
 	fmt.Println("Starting http server: http://localhost:5000")

@@ -49,7 +49,7 @@ func createForumAction(w http.ResponseWriter, in createForumInput, db *sql.DB) {
 	forumInfo, err := createForumGetUser(in, db)
 
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {
-		errJson := api.Error{Message: "Can't find user"}
+		errJson := api.ErrorModel{Message: "Can't find user"}
 		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}

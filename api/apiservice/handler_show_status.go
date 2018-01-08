@@ -20,7 +20,7 @@ type showStatusOutput api.StatusModel
 func showStatusAction(w http.ResponseWriter, db *sql.DB) {
 	var out showStatusOutput
 
-	sqlQuery := "SELECT (SELECT count(*) FROM forums), (SELECT count(*) FROM thread), (SELECT count(*) FROM users), (SELECT count(*) FROM posts)"
+	sqlQuery := "SELECT (SELECT count(*) FROM forums), (SELECT count(*) FROM threads), (SELECT count(*) FROM users), (SELECT count(*) FROM posts)"
 	err := db.QueryRow(sqlQuery).Scan(&out.ForumsCount, &out.ThreadsCount, &out.UsersCount, &out.PostsCount)
 	if err != nil {
 		log.Println("error: apiservice.showStatusAction: SELECT:", err)

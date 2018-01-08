@@ -2,10 +2,13 @@ package apiforum
 
 import (
 	"net/http"
-	"github.com/reo7sp/technopark-db/apiutil"
 	"database/sql"
 	"log"
 	"github.com/reo7sp/technopark-db/api"
+	"strconv"
+	"fmt"
+	"github.com/reo7sp/technopark-db/apiutil"
+	"github.com/reo7sp/technopark-db/dbutil"
 )
 
 func MakeShowUsersHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -27,6 +30,9 @@ type showUsersInput struct {
 	Limit  int64  `json:"limit"`
 	Since  string `json:"since"`
 	IsDesc bool   `json:"desc"`
+
+	Order    string `json:"-"`
+	LimitSql string `json:"-"`
 }
 
 type showUsersOutputItem api.UserModel
@@ -34,21 +40,79 @@ type showUsersOutputItem api.UserModel
 type showUsersOutput []showUsersOutputItem
 
 func showUsersRead(r *http.Request, ps map[string]string) (in showUsersInput, err error) {
-	err = apiutil.ReadJsonObject(r, &in)
+	in.Slug = ps["slug"]
+
+	query := r.URL.Query()
+
+	in.Limit, err = strconv.ParseInt(query.Get("limit"), 10, 64)
+	if err != nil {
+		err = nil
+		in.Limit = 0
+		in.LimitSql = ""
+	} else {
+		in.LimitSql = "LIMIT " + strconv.FormatInt(in.Limit, 10)
+	}
+	in.Since = query.Get("since")
+	in.IsDesc = query.Get("desc") == "true"
+	if in.IsDesc {
+		in.Order = "DESC"
+	} else {
+		in.Order = "ASC"
+	}
 	return
 }
 
-func showUsersAction(w http.ResponseWriter, in showUsersInput, db *sql.DB) {
-	out := make(showUsersOutput, 0, in.Limit)
+func showUsersCheckForumExists(slug string, db *sql.DB) (bool, error) {
+	sqlQuery := "SELECT slug FROM forums WHERE slug = $1"
+	var s string
+	err := db.QueryRow(sqlQuery, slug).Scan(&s)
 
-	sqlQuery := "SELECT nickname, fullname, email, about FROM users JOIN threads ON (threads.author = users.nickname) WHERE threads.forumSlug = $1 AND nickname > $2 LIMIT $3"
-	if in.IsDesc {
-		sqlQuery += " ORDER BY nickname DESC"
-	} else {
-		sqlQuery += " ORDER BY nickname ASC"
+	if err != nil && dbutil.IsErrorAboutNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func showUsersAction(w http.ResponseWriter, in showUsersInput, db *sql.DB) {
+	doesForumExists, err := showUsersCheckForumExists(in.Slug, db)
+	if err != nil {
+		log.Println("error: apiforum.showUsersAction: showUsersCheckForumExists:", err)
+		w.WriteHeader(500)
+		return
+	}
+	if !doesForumExists {
+		errJson := api.ErrorModel{Message: "Can't find forum"}
+		apiutil.WriteJsonObject(w, errJson, 404)
+		return
 	}
 
-	rows, err := db.Query(sqlQuery, in.Slug, in.Since, in.Limit)
+	out := make(showUsersOutput, 0, in.Limit)
+
+	sqlQuery := fmt.Sprintf(`
+
+	SELECT u.nickname, u.fullname, u.email, u.about FROM users u
+	JOIN forumUsers fu ON (fu.nickname = u.nickname)
+	WHERE fu.forumSlug = $1
+	AND (
+		CASE WHEN $2 != ''
+		THEN (
+			CASE WHEN $3 = TRUE
+			THEN u.nickname < $2::CITEXT
+			ELSE u.nickname > $2::CITEXT
+			END
+		)
+		ELSE TRUE
+		END
+	)
+	ORDER BY u.nickname %s
+	%s
+
+	`, in.Order, in.LimitSql)
+
+	rows, err := db.Query(sqlQuery, in.Slug, in.Since, in.IsDesc)
 	if err != nil {
 		log.Println("error: apiforum.showUsersAction: SELECT start:", err)
 		w.WriteHeader(500)
@@ -62,6 +126,7 @@ func showUsersAction(w http.ResponseWriter, in showUsersInput, db *sql.DB) {
 		if err != nil {
 			log.Println("error: apiforum.showUsersAction: SELECT iter:", err)
 			w.WriteHeader(500)
+			return
 		}
 		out = append(out, outItem)
 	}

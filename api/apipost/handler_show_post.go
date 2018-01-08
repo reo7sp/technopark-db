@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/dbutil"
 )
 
 func MakeShowPostHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -76,21 +77,21 @@ func showPostAction(w http.ResponseWriter, in showPostInput, db *sql.DB) {
 	sqlFields := ""
 	sqlScans := make([]interface{}, 0, maxCountOfSqlScans)
 
-	sqlFields += " p.id, p.parent, p.author, p.\"message\", p.isEdited, p.forumSlug, p.threadId, p.createdAt"
+	sqlFields += " p.id, p.parent, p.author, p.message, p.isEdited, p.forumSlug, p.threadId, p.createdAt"
 	sqlScans = append(sqlScans,
 		&outBuilder.Post.Id, &outBuilder.Post.ParentPostId, &outBuilder.Post.AuthorNickname, &outBuilder.Post.Message,
 		&outBuilder.Post.IsEdited, &outBuilder.Post.ForumSlug, &outBuilder.Post.ThreadId, &outBuilder.Post.CreatedDateStr)
 
 	if in.NeedUser {
 		sqlJoins += " JOIN users u ON (u.nickname = p.author)"
-		sqlFields += " u.nickname, u.fullname, u.email, u.about"
+		sqlFields += ", u.nickname, u.fullname, u.email, u.about"
 		sqlScans = append(sqlScans,
 			&outBuilder.Author.Nickname, &outBuilder.Author.Fullname, &outBuilder.Author.Email, &outBuilder.Author.About)
 	}
 
 	if in.NeedForum {
 		sqlJoins += " JOIN forums f ON (f.slug = p.forumSlug)"
-		sqlFields += " f.slug, f.title, f.\"user\", f.postsCount, f.threadsCount"
+		sqlFields += ", f.slug, f.title, f.user, f.postsCount, f.threadsCount"
 		sqlScans = append(sqlScans,
 			&outBuilder.Forum.Slug, &outBuilder.Forum.Title, &outBuilder.Forum.User,
 			&outBuilder.Forum.PostsCount, &outBuilder.Forum.ThreadsCount)
@@ -98,15 +99,21 @@ func showPostAction(w http.ResponseWriter, in showPostInput, db *sql.DB) {
 
 	if in.NeedThread {
 		sqlJoins += " JOIN threads t ON (t.id = p.threadId)"
-		sqlFields += " t.id, t.title, t.author, t.forumSlug, t.\"message\", t.createdAt"
+		sqlFields += ", t.id, t.title, t.author, t.forumSlug, t.message, t.createdAt, t.slug"
 		sqlScans = append(sqlScans,
 			&outBuilder.Thread.Id, &outBuilder.Thread.Title, &outBuilder.Thread.AuthorNickname, &outBuilder.Thread.ForumSlug,
-			&outBuilder.Thread.Message, &outBuilder.Thread.CreatedDateStr)
+			&outBuilder.Thread.Message, &outBuilder.Thread.CreatedDateStr, &outBuilder.Thread.Slug)
 	}
 
 	sqlQuery := "SELECT " + sqlFields + " FROM posts p " + sqlJoins + " WHERE p.id = $1"
 
 	err := db.QueryRow(sqlQuery, in.Id).Scan(sqlScans...)
+
+	if err != nil && dbutil.IsErrorAboutNotFound(err) {
+		errJson := api.ErrorModel{Message: "Can't find post"}
+		apiutil.WriteJsonObject(w, errJson, 404)
+		return
+	}
 	if err != nil {
 		log.Println("error: apipost.showPostAction: SELECT:", err)
 		w.WriteHeader(500)

@@ -7,6 +7,7 @@ import (
 	"log"
 	"strconv"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/dbutil"
 )
 
 func MakeEditPostHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -23,8 +24,8 @@ func MakeEditPostHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, ma
 }
 
 type editPostInput struct {
-	Id      int64  `json:"-"`
-	Message string `json:"message"`
+	Id      int64   `json:"-"`
+	Message *string `json:"message"`
 }
 
 type editPostOutput api.PostModel
@@ -44,16 +45,19 @@ func editPostRead(r *http.Request, ps map[string]string) (in editPostInput, err 
 func editPostAction(w http.ResponseWriter, in editPostInput, db *sql.DB) {
 	var out editPostOutput
 
-	sqlQuery := "UPDATE posts SET \"message\" = $1, isEdited = TRUE WHERE id = $2"
-	r, err := db.Exec(sqlQuery, in.Message, in.Id)
+	out.Id = in.Id
+
+	sqlQuery := "UPDATE posts SET \"message\" = COALESCE($1, \"message\"), isEdited = ($1 IS NOT NULL AND $1 <> \"message\") WHERE id = $2 RETURNING author, createdAt, forumSlug, isEdited, threadId, \"message\""
+	err := db.QueryRow(sqlQuery, in.Message, in.Id).Scan(&out.AuthorNickname, &out.CreatedDateStr, &out.ForumSlug, &out.IsEdited, &out.ThreadId, &out.Message)
+
+	if err != nil && dbutil.IsErrorAboutNotFound(err) {
+		errJson := api.ErrorModel{Message: "Can't find post"}
+		apiutil.WriteJsonObject(w, errJson, 404)
+		return
+	}
 	if err != nil {
 		log.Println("error: apipost.editPostAction: UPDATE:", err)
 		w.WriteHeader(500)
-		return
-	}
-	if c, _ := r.RowsAffected(); c == 0 {
-		errJson := api.Error{Message: "Can't find post"}
-		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}
 
