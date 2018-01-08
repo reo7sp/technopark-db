@@ -13,4 +13,4 @@ services:
     links:
       - app
     working_dir: /tmp
-    command: sh -c "sleep 30 && tech-db-forum func -u http://app:5000/app && tech-db-forum fill -u http://app:5000/app && tech-db-forum perf -u http://app:5000/api"
+    command: sh -c "sleep 30 && tech-db-forum func -u http://app:5000/api && tech-db-forum fill -u http://app:5000/api && tech-db-forum perf -u http://app:5000/api"
