@@ -88,6 +88,8 @@ func createThreadAction(w http.ResponseWriter, in createThreadInput, db *sql.DB)
 		err := db.QueryRow(sqlQuery, in.ThreadSlug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.Message, &out.CreatedDateStr, &out.Slug, &out.ForumSlug, &out.CreatedDateStr)
 
 		if err != nil {
+			_, constraint := dbutil.IsErrorAboutDublicateReturnConstaint(err)
+			log.Println("error: apiforum.createThreadAction: SELECT: not found when unique violation of:", constraint)
 			log.Println("error: apiforum.createThreadAction: SELECT:", err)
 			w.WriteHeader(500)
 			return
