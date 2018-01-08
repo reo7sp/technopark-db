@@ -107,7 +107,7 @@ func createThreadAction(w http.ResponseWriter, in createThreadInput, db *sql.DB)
 	out.Message = in.Message
 	out.CreatedDateStr = in.CreatedAtStr
 	if in.ThreadSlug != nil {
-		out.Slug = *in.ThreadSlug
+		out.Slug = in.ThreadSlug
 	}
 
 	apiutil.WriteJsonObject(w, out, 201)

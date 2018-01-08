@@ -58,6 +58,24 @@ CREATE TABLE IF NOT EXISTS forumUsers (
 
 -- indexes
 
+CREATE INDEX IF NOT EXISTS idx_users_nickname ON users (nickname);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
+
+CREATE INDEX IF NOT EXISTS idx_forums_slug ON forums (slug);
+
+CREATE INDEX IF NOT EXISTS idx_threads_id ON threads (id);
+CREATE INDEX IF NOT EXISTS idx_threads_slug ON threads (slug);
+CREATE INDEX IF NOT EXISTS idx_threads_forumSlugCreatedAt ON threads (forumSlug, createdAt);
+
+CREATE INDEX IF NOT EXISTS idx_posts_id ON posts (id);
+CREATE INDEX IF NOT EXISTS idx_posts_threadId ON posts (threadId);
+CREATE INDEX IF NOT EXISTS idx_posts_threadSlug ON posts (threadSlug);
+CREATE INDEX IF NOT EXISTS idx_posts_path ON posts (path);
+CREATE INDEX IF NOT EXISTS idx_posts_rootPostNo ON posts (rootPostNo);
+
+CREATE INDEX IF NOT EXISTS idx_votes_nicknameThreadId ON votes (nickname, threadId);
+
+CREATE INDEX IF NOT EXISTS idx_forumUsers_forumSlugNickname ON forumUsers (forumSlug, nickname);
 
 -- triggers
 
