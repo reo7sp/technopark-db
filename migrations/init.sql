@@ -58,24 +58,39 @@ CREATE TABLE IF NOT EXISTS forumUsers (
 
 -- indexes
 
-CREATE INDEX IF NOT EXISTS idx_users_nickname ON users (nickname);
-CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
+CREATE INDEX IF NOT EXISTS idx_users_nickname
+  ON users (nickname);
+CREATE INDEX IF NOT EXISTS idx_users_email
+  ON users (email);
 
-CREATE INDEX IF NOT EXISTS idx_forums_slug ON forums (slug);
+CREATE INDEX IF NOT EXISTS idx_forums_slug
+  ON forums (slug);
 
-CREATE INDEX IF NOT EXISTS idx_threads_id ON threads (id);
-CREATE INDEX IF NOT EXISTS idx_threads_slug ON threads (slug);
-CREATE INDEX IF NOT EXISTS idx_threads_forumSlugCreatedAt ON threads (forumSlug, createdAt);
+CREATE INDEX IF NOT EXISTS idx_threads_id
+  ON threads (id);
+CREATE INDEX IF NOT EXISTS idx_threads_slug
+  ON threads (slug);
+CREATE INDEX IF NOT EXISTS idx_threads_forumSlugCreatedAt
+  ON threads (forumSlug, createdAt);
 
-CREATE INDEX IF NOT EXISTS idx_posts_id ON posts (id);
-CREATE INDEX IF NOT EXISTS idx_posts_threadId ON posts (threadId);
-CREATE INDEX IF NOT EXISTS idx_posts_threadSlug ON posts (threadSlug);
-CREATE INDEX IF NOT EXISTS idx_posts_path ON posts (path);
-CREATE INDEX IF NOT EXISTS idx_posts_rootPostNo ON posts (rootPostNo);
+CREATE INDEX IF NOT EXISTS idx_posts_id
+  ON posts (id);
+CREATE INDEX IF NOT EXISTS idx_posts_threadId
+  ON posts (threadId);
+CREATE INDEX IF NOT EXISTS idx_posts_threadSlug
+  ON posts (threadSlug);
+CREATE INDEX IF NOT EXISTS idx_posts_pathId
+  ON posts (path, id);
+CREATE INDEX IF NOT EXISTS idx_posts_rootPostNo
+  ON posts (rootPostNo);
+CREATE INDEX IF NOT EXISTS idx_posts_createdAtId
+  ON posts (createdAt, id);
 
-CREATE INDEX IF NOT EXISTS idx_votes_nicknameThreadId ON votes (nickname, threadId);
+CREATE INDEX IF NOT EXISTS idx_votes_nicknameThreadId
+  ON votes (nickname, threadId);
 
-CREATE INDEX IF NOT EXISTS idx_forumUsers_forumSlugNickname ON forumUsers (forumSlug, nickname);
+CREATE INDEX IF NOT EXISTS idx_forumUsers_forumSlugNickname
+  ON forumUsers (forumSlug, nickname);
 
 -- triggers
 
@@ -101,28 +116,27 @@ CREATE TRIGGER trig_posts_incrementForumPostsCount
   FOR EACH ROW
 EXECUTE PROCEDURE func_posts_incrementForumPostsCount();
 
-
-CREATE OR REPLACE FUNCTION func_posts_decrementForumPostsCount()
-  RETURNS TRIGGER AS
-$$
-BEGIN
-
-  UPDATE forums
-  SET postsCount = (postsCount - 1)
-  WHERE slug = OLD.forumSlug;
-
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trig_posts_decrementForumPostsCount
-ON posts;
-
-CREATE TRIGGER trig_posts_decrementForumPostsCount
-  AFTER DELETE
-  ON posts
-  FOR EACH ROW
-EXECUTE PROCEDURE func_posts_decrementForumPostsCount();
+-- CREATE OR REPLACE FUNCTION func_posts_decrementForumPostsCount()
+--   RETURNS TRIGGER AS
+-- $$
+-- BEGIN
+--
+--   UPDATE forums
+--   SET postsCount = (postsCount - 1)
+--   WHERE slug = OLD.forumSlug;
+--
+--   RETURN NULL;
+-- END;
+-- $$ LANGUAGE plpgsql;
+--
+-- DROP TRIGGER IF EXISTS trig_posts_decrementForumPostsCount
+-- ON posts;
+--
+-- CREATE TRIGGER trig_posts_decrementForumPostsCount
+--   AFTER DELETE
+--   ON posts
+--   FOR EACH ROW
+-- EXECUTE PROCEDURE func_posts_decrementForumPostsCount();
 
 
 CREATE OR REPLACE FUNCTION func_threads_incrementForumThreadsCount()
@@ -147,28 +161,27 @@ CREATE TRIGGER trig_threads_incrementForumThreadsCount
   FOR EACH ROW
 EXECUTE PROCEDURE func_threads_incrementForumThreadsCount();
 
-
-CREATE OR REPLACE FUNCTION func_threads_decrementForumThreadsCount()
-  RETURNS TRIGGER AS
-$$
-BEGIN
-
-  UPDATE forums
-  SET threadsCount = (threadsCount - 1)
-  WHERE slug = OLD.forumSlug;
-
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trig_threads_decrementForumThreadsCount
-ON threads;
-
-CREATE TRIGGER trig_threads_decrementForumThreadsCount
-  AFTER DELETE
-  ON threads
-  FOR EACH ROW
-EXECUTE PROCEDURE func_threads_decrementForumThreadsCount();
+-- CREATE OR REPLACE FUNCTION func_threads_decrementForumThreadsCount()
+--   RETURNS TRIGGER AS
+-- $$
+-- BEGIN
+--
+--   UPDATE forums
+--   SET threadsCount = (threadsCount - 1)
+--   WHERE slug = OLD.forumSlug;
+--
+--   RETURN NULL;
+-- END;
+-- $$ LANGUAGE plpgsql;
+--
+-- DROP TRIGGER IF EXISTS trig_threads_decrementForumThreadsCount
+-- ON threads;
+--
+-- CREATE TRIGGER trig_threads_decrementForumThreadsCount
+--   AFTER DELETE
+--   ON threads
+--   FOR EACH ROW
+-- EXECUTE PROCEDURE func_threads_decrementForumThreadsCount();
 
 
 CREATE OR REPLACE FUNCTION func_posts_constructParentPath()
@@ -315,3 +328,47 @@ CREATE TRIGGER trig_threads_insertForumUser
   ON threads
   FOR EACH ROW
 EXECUTE PROCEDURE func_threads_insertForumUser();
+
+-- settings
+
+ALTER TABLE users
+  SET ( AUTOVACUUM_VACUUM_THRESHOLD = 0),
+  SET ( AUTOVACUUM_VACUUM_SCALE_FACTOR = 0.0),
+  SET ( AUTOVACUUM_FREEZE_MIN_AGE = 0),
+  SET ( AUTOVACUUM_FREEZE_MAX_AGE = 100000),
+  SET ( AUTOVACUUM_FREEZE_TABLE_AGE = 0);
+
+ALTER TABLE forums
+  SET ( AUTOVACUUM_VACUUM_THRESHOLD = 0),
+  SET ( AUTOVACUUM_VACUUM_SCALE_FACTOR = 0.0),
+  SET ( AUTOVACUUM_FREEZE_MIN_AGE = 0),
+  SET ( AUTOVACUUM_FREEZE_MAX_AGE = 100000),
+  SET ( AUTOVACUUM_FREEZE_TABLE_AGE = 0);
+
+ALTER TABLE threads
+  SET ( AUTOVACUUM_VACUUM_THRESHOLD = 0),
+  SET ( AUTOVACUUM_VACUUM_SCALE_FACTOR = 0.0),
+  SET ( AUTOVACUUM_FREEZE_MIN_AGE = 0),
+  SET ( AUTOVACUUM_FREEZE_MAX_AGE = 100000),
+  SET ( AUTOVACUUM_FREEZE_TABLE_AGE = 0);
+
+ALTER TABLE posts
+  SET ( AUTOVACUUM_VACUUM_THRESHOLD = 0),
+  SET ( AUTOVACUUM_VACUUM_SCALE_FACTOR = 0.0),
+  SET ( AUTOVACUUM_FREEZE_MIN_AGE = 0),
+  SET ( AUTOVACUUM_FREEZE_MAX_AGE = 100000),
+  SET ( AUTOVACUUM_FREEZE_TABLE_AGE = 0);
+
+ALTER TABLE votes
+  SET ( AUTOVACUUM_VACUUM_THRESHOLD = 0),
+  SET ( AUTOVACUUM_VACUUM_SCALE_FACTOR = 0.0),
+  SET ( AUTOVACUUM_FREEZE_MIN_AGE = 0),
+  SET ( AUTOVACUUM_FREEZE_MAX_AGE = 100000),
+  SET ( AUTOVACUUM_FREEZE_TABLE_AGE = 0);
+
+ALTER TABLE forumUsers
+  SET ( AUTOVACUUM_VACUUM_THRESHOLD = 0),
+  SET ( AUTOVACUUM_VACUUM_SCALE_FACTOR = 0.0),
+  SET ( AUTOVACUUM_FREEZE_MIN_AGE = 0),
+  SET ( AUTOVACUUM_FREEZE_MAX_AGE = 100000),
+  SET ( AUTOVACUUM_FREEZE_TABLE_AGE = 0);
