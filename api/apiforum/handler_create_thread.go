@@ -9,6 +9,7 @@ import (
 	"github.com/reo7sp/technopark-db/api"
 	"time"
 	"github.com/reo7sp/technopark-db/dbutil"
+	"github.com/lib/pq"
 )
 
 func MakeCreateThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -84,6 +85,8 @@ func createThreadAction(w http.ResponseWriter, in createThreadInput, db *sql.DB)
 		return
 	}
 	if err != nil && dbutil.IsErrorAboutDublicate(err) {
+		log.Println("warning: apiforum.createThreadAction: INSERT:", err)
+
 		sqlQuery := "SELECT id, title, author, \"message\", createdAt, slug, forumSlug, createdAt FROM threads WHERE slug = $1"
 		err := db.QueryRow(sqlQuery, in.ThreadSlug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.Message, &out.CreatedDateStr, &out.Slug, &out.ForumSlug, &out.CreatedDateStr)
 
