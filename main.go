@@ -1,16 +1,16 @@
 package main
 
 import (
-	"github.com/reo7sp/technopark-db/dbutil"
-	"log"
-	"github.com/dimfeld/httptreemux"
-	"net/http"
 	"fmt"
+	"github.com/dimfeld/httptreemux"
 	"github.com/reo7sp/technopark-db/api/apiforum"
-	"github.com/reo7sp/technopark-db/api/apithread"
 	"github.com/reo7sp/technopark-db/api/apipost"
 	"github.com/reo7sp/technopark-db/api/apiservice"
+	"github.com/reo7sp/technopark-db/api/apithread"
 	"github.com/reo7sp/technopark-db/api/apiuser"
+	"github.com/reo7sp/technopark-db/dbutil"
+	"log"
+	"net/http"
 )
 
 func main() {

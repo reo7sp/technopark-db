@@ -9,7 +9,6 @@ import (
 	"github.com/reo7sp/technopark-db/api"
 	"time"
 	"github.com/reo7sp/technopark-db/dbutil"
-	"github.com/lib/pq"
 )
 
 func MakeCreateThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
