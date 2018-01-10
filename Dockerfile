@@ -28,7 +28,7 @@ COPY . .
 RUN go get ./...
 RUN go build
 
-ENV PGHOST /tmp/.s.PGSQL.5432
+ENV PGHOST /var/run/postgresql/10-main.pid
 ENV PGDATABASE technopark
 EXPOSE 5000
 CMD /etc/init.d/postgresql start && \
