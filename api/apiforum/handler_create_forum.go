@@ -40,7 +40,7 @@ func createForumRead(r *http.Request, ps map[string]string) (in createForumInput
 }
 
 func createForumGetUser(in createForumInput, db *pgx.ConnPool) (r createForumGetUserInfo, err error) {
-	sqlQuery := "SELECT nickname FROM users WHERE nickname = $1"
+	sqlQuery := "SELECT nickname::text FROM users WHERE nickname = $1::citext"
 	err = db.QueryRow(sqlQuery, in.User).Scan(&r.Nickname)
 	return
 }
@@ -60,7 +60,7 @@ func createForumAction(w http.ResponseWriter, in createForumInput, db *pgx.ConnP
 	_, err = db.Exec(sqlQuery, in.Title, forumInfo.Nickname, in.Slug)
 
 	if err != nil && dbutil.IsErrorAboutDublicate(err) {
-		sqlQuery := "SELECT slug, title, \"user\", postsCount, threadsCount FROM forums WHERE slug = $1"
+		sqlQuery := "SELECT slug::text, title, \"user\"::text, postsCount, threadsCount FROM forums WHERE slug = $1::citext"
 		err := db.QueryRow(sqlQuery, in.Slug).Scan(&out.Slug, &out.Title, &out.User, &out.PostsCount, &out.ThreadsCount)
 
 		if err != nil {

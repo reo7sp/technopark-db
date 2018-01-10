@@ -82,7 +82,7 @@ func editUserAction(w http.ResponseWriter, in editUserInput, db *pgx.ConnPool) {
 		}
 	}
 
-	sqlQuery = "SELECT nickname, fullname, about, email FROM users WHERE nickname = $1"
+	sqlQuery = "SELECT nickname::text, fullname, about, email::text FROM users WHERE nickname = $1::citext"
 	err := db.QueryRow(sqlQuery, in.Nickname).Scan(&out.Nickname, &out.Fullname, &out.About, &out.Email)
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {
 		errJson := api.ErrorModel{Message: "Can't find user"}

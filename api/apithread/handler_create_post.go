@@ -92,7 +92,7 @@ func createPostCheckPostsParents(in createPostInput, db *pgx.ConnPool) (ok bool,
 	SELECT (
 		CASE WHEN $1 IS TRUE
 		THEN $2
-		ELSE (SELECT id FROM threads WHERE slug = $3)
+		ELSE (SELECT id FROM threads WHERE slug = $3::citext)
 		END
 	) = ALL (SELECT threadId FROM posts WHERE id IN (%s))
 	`, strings.Join(parentIdsStrs, ","))
@@ -110,7 +110,7 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *pgx.ConnPoo
 	out := make(createPostOutput, 0, len(in.Posts))
 
 	if len(in.Posts) == 0 {
-		sqlQuery := "SELECT 1 FROM threads WHERE (CASE WHEN $1 IS TRUE THEN id = $2 ELSE slug = $3 END)"
+		sqlQuery := "SELECT 1 FROM threads WHERE (CASE WHEN $1 IS TRUE THEN id = $2 ELSE slug = $3::citext END)"
 		var ok int8
 		err := db.QueryRow(sqlQuery, in.HasId, in.Id, in.Slug).Scan(&ok)
 
@@ -145,9 +145,9 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *pgx.ConnPoo
 			%s,
 			%s,
 			%s,
-			(SELECT forumSlug FROM threads WHERE (CASE WHEN $1 IS TRUE THEN id = $2 ELSE slug = $3 END)),
-			(CASE WHEN $1 IS TRUE THEN $2 ELSE (SELECT id FROM threads WHERE slug = $3) END),
-			(CASE WHEN $1 IS TRUE THEN (SELECT slug FROM threads WHERE id = $2) ELSE $3 END)
+			(SELECT forumSlug FROM threads WHERE (CASE WHEN $1 IS TRUE THEN id = $2 ELSE slug = $3::citext END)),
+			(CASE WHEN $1 IS TRUE THEN $2 ELSE (SELECT id FROM threads WHERE slug = $3::citext) END),
+			(CASE WHEN $1 IS TRUE THEN (SELECT slug FROM threads WHERE id = $2) ELSE $3::citext END)
 		)`, createPostGenerateNextPlaceholder(&placeholderIndex),
 			createPostGenerateNextPlaceholder(&placeholderIndex),
 			createPostGenerateNextPlaceholder(&placeholderIndex))
@@ -156,7 +156,7 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *pgx.ConnPoo
 		}
 		sqlValues = append(sqlValues, post.ParentOrNil, post.Author, post.Message)
 	}
-	sqlQuery += " RETURNING id, createdAt, forumSlug, threadId"
+	sqlQuery += " RETURNING id, createdAt, forumSlug::text, threadId"
 
 	rows, err := db.Query(sqlQuery, sqlValues...)
 

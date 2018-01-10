@@ -38,11 +38,11 @@ func showThreadAction(w http.ResponseWriter, in showThreadInput, db *pgx.ConnPoo
 	var out showThreadOutput
 
 	sqlQuery := `
-	SELECT id, title, author, forumSlug, "message", votesCount, slug, createdAt FROM threads
+	SELECT id, title, author::text, forumSlug::text, "message", votesCount, slug::text, createdAt FROM threads
 	WHERE (
 		CASE WHEN $1 IS TRUE
 		THEN id = $2
-		ELSE slug = $3
+		ELSE slug = $3::citext
 		END
 	)
 	`

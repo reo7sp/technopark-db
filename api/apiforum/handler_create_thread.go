@@ -56,7 +56,7 @@ func createThreadAction(w http.ResponseWriter, in createThreadInput, db *pgx.Con
 		in.CreatedAtStr = time.Now().Format(time.RFC3339)
 	}
 
-	sqlQuery := "INSERT INTO threads (slug, title, author, forumSlug, \"message\", createdAt) VALUES ($1::CITEXT, $2, $3, (SELECT slug FROM forums WHERE slug = $4), $5, $6) RETURNING id, forumSlug"
+	sqlQuery := "INSERT INTO threads (slug, title, author, forumSlug, \"message\", createdAt) VALUES ($1::citext, $2, $3, (SELECT slug FROM forums WHERE slug = $4::citext), $5, $6) RETURNING id, forumSlug::text"
 	err := db.QueryRow(sqlQuery, in.ThreadSlug, in.Title, in.Author, in.ForumSlug, in.Message, in.CreatedAtStr).Scan(&out.Id, &out.ForumSlug)
 
 	if err != nil && dbutil.IsErrorAboutFailedForeignKey(err) {
@@ -65,7 +65,7 @@ func createThreadAction(w http.ResponseWriter, in createThreadInput, db *pgx.Con
 		return
 	}
 	if err != nil && dbutil.IsErrorAboutDublicate(err) {
-		sqlQuery := "SELECT id, title, author, \"message\", createdAt, slug, forumSlug FROM threads WHERE slug = $1::CITEXT"
+		sqlQuery := "SELECT id, title, author::text, \"message\", createdAt, slug::text, forumSlug::text FROM threads WHERE slug = $1::citext"
 		var t time.Time
 		err := db.QueryRow(sqlQuery, in.ThreadSlug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.Message, &t, &out.Slug, &out.ForumSlug)
 		out.CreatedDateStr = t.Format(time.RFC3339Nano)

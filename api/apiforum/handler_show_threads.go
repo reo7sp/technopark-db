@@ -61,7 +61,7 @@ func showThreadsAction(w http.ResponseWriter, in showThreadsInput, db *pgx.ConnP
 	}
 
 	forumSlug := ""
-	err := db.QueryRow("SELECT slug FROM forums WHERE slug = $1", in.Slug).Scan(&forumSlug)
+	err := db.QueryRow("SELECT slug::text FROM forums WHERE slug = $1::citext", in.Slug).Scan(&forumSlug)
 	if err != nil {
 		errJson := api.ErrorModel{Message: "Can't find forum"}
 		apiutil.WriteJsonObject(w, errJson, 404)
@@ -70,7 +70,7 @@ func showThreadsAction(w http.ResponseWriter, in showThreadsInput, db *pgx.ConnP
 
 	sqlFields := make([]interface{}, 0, 3)
 	sqlFields = append(sqlFields, in.Slug)
-	sqlQuery := "SELECT id, title, author, \"message\", createdAt, votesCount, slug, forumSlug FROM threads WHERE forumSlug = $1"
+	sqlQuery := "SELECT id, title, author::text, \"message\", createdAt, votesCount, slug::text, forumSlug::text FROM threads WHERE forumSlug = $1::citext"
 	if in.IsDesc {
 		if in.Since != "" {
 			sqlFields = append(sqlFields, in.Since)

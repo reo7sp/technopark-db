@@ -49,7 +49,7 @@ func createUserAction(w http.ResponseWriter, in createUserInput, db *pgx.ConnPoo
 	if err != nil && dbutil.IsErrorAboutDublicate(err) {
 		out2 := make(createUserOutput2, 0, 2)
 
-		sqlQuery := "SELECT nickname, fullname, about, email FROM users WHERE nickname = $1 OR email = $2"
+		sqlQuery := "SELECT nickname::text, fullname, about, email::text FROM users WHERE nickname = $1::citext OR email = $2::citext"
 		rows, err := db.Query(sqlQuery, in.Nickname, in.Email)
 
 		if err != nil {

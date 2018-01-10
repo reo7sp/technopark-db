@@ -115,11 +115,11 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *pgx.ConnPool)
 	case "flat":
 		sqlQuery = fmt.Sprintf(`
 
-		SELECT id, parent, author, "message", isEdited, forumSlug, threadId, createdAt FROM posts
+		SELECT id, parent, author::text, "message", isEdited, forumSlug::text, threadId, createdAt FROM posts
 		WHERE (
 			CASE WHEN $1 = TRUE
 			THEN (threadId = $2)
-			ELSE (threadSlug = $3)
+			ELSE (threadSlug = $3::citext)
 			END
 		)
 		AND (
@@ -143,11 +143,11 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *pgx.ConnPool)
 	case "tree":
 		sqlQuery = fmt.Sprintf(`
 
-		SELECT id, parent, author, "message", isEdited, forumSlug, threadId, createdAt FROM posts
+		SELECT id, parent, author::text, "message", isEdited, forumSlug::text, threadId, createdAt FROM posts
 		WHERE (
 			CASE WHEN $1 = TRUE
 			THEN (threadId = $2)
-			ELSE (threadSlug = $3)
+			ELSE (threadSlug = $3::citext)
 			END
 		)
 		AND (
@@ -171,11 +171,11 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *pgx.ConnPool)
 	case "parent_tree":
 		sqlQuery = fmt.Sprintf(`
 
-		SELECT id, parent, author, "message", isEdited, forumSlug, threadId, createdAt FROM posts
+		SELECT id, parent, author::text, "message", isEdited, forumSlug::text, threadId, createdAt FROM posts
 		WHERE (
 			CASE WHEN $1 = TRUE
 			THEN (threadId = $2)
-			ELSE (threadSlug = $3)
+			ELSE (threadSlug = $3::citext)
 			END
 		)
 		AND (
@@ -198,7 +198,7 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *pgx.ConnPool)
 						WHERE (
 							CASE WHEN $1 = TRUE
 							THEN (t.id = $2)
-							ELSE (t.slug = $3)
+							ELSE (t.slug = $3::citext)
 							END
 						)
 					)

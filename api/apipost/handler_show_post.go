@@ -78,7 +78,7 @@ func showPostAction(w http.ResponseWriter, in showPostInput, db *pgx.ConnPool) {
 	sqlFields := ""
 	sqlScans := make([]interface{}, 0, maxCountOfSqlScans)
 
-	sqlFields += " p.id, p.parent, p.author, p.message, p.isEdited, p.forumSlug, p.threadId, p.createdAt"
+	sqlFields += " p.id, p.parent, p.author::text, p.message, p.isEdited, p.forumSlug::text, p.threadId, p.createdAt"
 	var t1 time.Time
 	sqlScans = append(sqlScans,
 		&outBuilder.Post.Id, &outBuilder.Post.ParentPostId, &outBuilder.Post.AuthorNickname, &outBuilder.Post.Message,
@@ -86,14 +86,14 @@ func showPostAction(w http.ResponseWriter, in showPostInput, db *pgx.ConnPool) {
 
 	if in.NeedUser {
 		sqlJoins += " JOIN users u ON (u.nickname = p.author)"
-		sqlFields += ", u.nickname, u.fullname, u.email, u.about"
+		sqlFields += ", u.nickname::text, u.fullname, u.email::text, u.about"
 		sqlScans = append(sqlScans,
 			&outBuilder.Author.Nickname, &outBuilder.Author.Fullname, &outBuilder.Author.Email, &outBuilder.Author.About)
 	}
 
 	if in.NeedForum {
 		sqlJoins += " JOIN forums f ON (f.slug = p.forumSlug)"
-		sqlFields += ", f.slug, f.title, f.user, f.postsCount, f.threadsCount"
+		sqlFields += ", f.slug::text, f.title, f.user::text, f.postsCount, f.threadsCount"
 		sqlScans = append(sqlScans,
 			&outBuilder.Forum.Slug, &outBuilder.Forum.Title, &outBuilder.Forum.User,
 			&outBuilder.Forum.PostsCount, &outBuilder.Forum.ThreadsCount)
@@ -102,7 +102,7 @@ func showPostAction(w http.ResponseWriter, in showPostInput, db *pgx.ConnPool) {
 	var t2 time.Time
 	if in.NeedThread {
 		sqlJoins += " JOIN threads t ON (t.id = p.threadId)"
-		sqlFields += ", t.id, t.title, t.author, t.forumSlug, t.message, t.createdAt, t.slug"
+		sqlFields += ", t.id, t.title, t.author::text, t.forumSlug::text, t.message, t.createdAt, t.slug::text"
 		sqlScans = append(sqlScans,
 			&outBuilder.Thread.Id, &outBuilder.Thread.Title, &outBuilder.Thread.AuthorNickname, &outBuilder.Thread.ForumSlug,
 			&outBuilder.Thread.Message, &t2, &outBuilder.Thread.Slug)

@@ -50,7 +50,7 @@ func editThreadAction(w http.ResponseWriter, in editThreadInput, db *pgx.ConnPoo
 		sqlQuery += " WHERE slug = $3"
 		sqlFields[2] = in.Slug
 	}
-	sqlQuery += " RETURNING author, createdAt, forumSlug, id, \"message\", slug, title"
+	sqlQuery += " RETURNING author::text, createdAt, forumSlug::text, id, \"message\", slug::text, title"
 
 	var t time.Time
 	err := db.QueryRow(sqlQuery, sqlFields...).Scan(&out.AuthorNickname, &t, &out.ForumSlug, &out.Id, &out.Message, &out.Slug, &out.Title)

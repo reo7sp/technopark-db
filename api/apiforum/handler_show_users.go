@@ -63,7 +63,7 @@ func showUsersRead(r *http.Request, ps map[string]string) (in showUsersInput, er
 }
 
 func showUsersCheckForumExists(slug string, db *pgx.ConnPool) (bool, error) {
-	sqlQuery := "SELECT slug FROM forums WHERE slug = $1"
+	sqlQuery := "SELECT slug::text FROM forums WHERE slug = $1::citext"
 	var s string
 	err := db.QueryRow(sqlQuery, slug).Scan(&s)
 
@@ -93,15 +93,15 @@ func showUsersAction(w http.ResponseWriter, in showUsersInput, db *pgx.ConnPool)
 
 	sqlQuery := fmt.Sprintf(`
 
-	SELECT u.nickname, u.fullname, u.email, u.about FROM users u
+	SELECT u.nickname::text, u.fullname, u.email::text, u.about FROM users u
 	JOIN forumUsers fu ON (fu.nickname = u.nickname)
-	WHERE fu.forumSlug = $1
+	WHERE fu.forumSlug = $1::citext
 	AND (
 		CASE WHEN $2 != ''
 		THEN (
 			CASE WHEN $3 = TRUE
-			THEN u.nickname < $2::CITEXT
-			ELSE u.nickname > $2::CITEXT
+			THEN u.nickname < $2::citext
+			ELSE u.nickname > $2::citext
 			END
 		)
 		ELSE TRUE

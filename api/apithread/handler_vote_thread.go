@@ -47,7 +47,7 @@ func voteThreadAction(w http.ResponseWriter, in voteThreadInput, db *pgx.ConnPoo
 		(
 			CASE WHEN $1 IS TRUE
 			THEN $2
-			ELSE (SELECT id FROM threads WHERE slug = $3)
+			ELSE (SELECT id FROM threads WHERE slug = $3::citext)
 			END
 		),
 		$5
@@ -69,11 +69,11 @@ func voteThreadAction(w http.ResponseWriter, in voteThreadInput, db *pgx.ConnPoo
 	}
 
 	sqlQuery = `
-	SELECT id, title, author, forumSlug, "message", votesCount, slug, createdAt FROM threads
+	SELECT id, title, author::text, forumSlug::text, "message", votesCount, slug::text, createdAt FROM threads
 	WHERE (
 		CASE WHEN $1 IS TRUE
 		THEN id = $2
-		ELSE slug = $3
+		ELSE slug = $3::citext
 		END
 	)
 	`

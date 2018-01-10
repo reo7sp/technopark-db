@@ -41,7 +41,7 @@ func showForumRead(r *http.Request, ps map[string]string) (in showForumInput, er
 func showForumAction(w http.ResponseWriter, in showForumInput, db *pgx.ConnPool) {
 	var out showForumOutput
 
-	sqlQuery := "SELECT slug, title, \"user\", postsCount, threadsCount FROM forums WHERE slug = $1"
+	sqlQuery := "SELECT slug::text, title, \"user\"::text, postsCount, threadsCount FROM forums WHERE slug = $1::citext"
 	err := db.QueryRow(sqlQuery, in.Slug).Scan(&out.Slug, &out.Title, &out.User, &out.PostsCount, &out.ThreadsCount)
 
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {

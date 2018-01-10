@@ -36,7 +36,7 @@ func showUserRead(r *http.Request, ps map[string]string) (in showUserInput, err 
 func showUserAction(w http.ResponseWriter, in showUserInput, db *pgx.ConnPool) {
 	var out showUserOutput
 
-	sqlQuery := "SELECT nickname, fullname, about, email FROM users WHERE nickname = $1"
+	sqlQuery := "SELECT nickname::text, fullname, about, email::text FROM users WHERE nickname = $1::citext"
 	err := db.QueryRow(sqlQuery, in.Nickname).Scan(&out.Nickname, &out.Fullname, &out.About, &out.Email)
 
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {
