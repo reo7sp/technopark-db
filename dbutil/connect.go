@@ -7,6 +7,9 @@ import (
 
 func Connect() (*pgx.ConnPool, error) {
 	connConfig, err := pgx.ParseEnvLibpq()
+	if err != nil {
+		return nil, err
+	}
 
 	db, err := pgx.NewConnPool(
 		pgx.ConnPoolConfig{
@@ -19,13 +22,13 @@ func Connect() (*pgx.ConnPool, error) {
 		return nil, err
 	}
 
-	return db, err
+	return db, nil
 }
 
 func createTables(db *pgx.ConnPool) error {
 	b, err := ioutil.ReadFile("migrations/init.sql")
 	if err != nil {
-		return nil
+		return err
 	}
 	sqlStr := string(b)
 

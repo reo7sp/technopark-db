@@ -21,6 +21,7 @@ RUN /etc/init.d/postgresql start && \
     psql --command "CREATE USER technopark WITH SUPERUSER PASSWORD 'technopark';" && \
     createdb -E UTF8 -T template0 -O technopark technopark && \
     /etc/init.d/postgresql stop
+RUN ln -s /var/run/postgresql/10-main.pid /var/run/postgresql/.s.PGSQL.5432
 
 USER root
 WORKDIR /go/src/github.com/reo7sp/technopark-db
@@ -28,7 +29,7 @@ COPY . .
 RUN go get ./...
 RUN go build
 
-ENV PGHOST /var/run/postgresql/10-main.pid
+ENV PGHOST /var/run/postgresql
 ENV PGDATABASE technopark
 EXPOSE 5000
 CMD /etc/init.d/postgresql start && \
