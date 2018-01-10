@@ -1,15 +1,16 @@
 package apithread
 
 import (
-	"net/http"
-	"database/sql"
-	"github.com/reo7sp/technopark-db/apiutil"
-	"log"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
+	"log"
+	"net/http"
+	"github.com/jackc/pgx"
+	"time"
 )
 
-func MakeVoteThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeVoteThreadHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := voteThreadRead(r, ps)
 		if err != nil {
@@ -31,41 +32,30 @@ type voteThreadInput struct {
 
 type voteThreadOutput api.ThreadModel
 
-type voteThreadGetThreadInfo struct {
-	Id int64
-}
-
 func voteThreadRead(r *http.Request, ps map[string]string) (in voteThreadInput, err error) {
 	resolveSlugOrIdInput(ps["slug_or_id"], &in.slugOrIdInput)
 	err = apiutil.ReadJsonObject(r, &in)
 	return
 }
 
-func voteThreadGetThread(in voteThreadInput, db *sql.DB) (r voteThreadGetThreadInfo, err error) {
-	if in.HasId {
-		r.Id = in.Id
-	} else {
-		sqlQuery := "SELECT id FROM threads WHERE slug = $1"
-		err = db.QueryRow(sqlQuery, in.Slug).Scan(&r.Id)
-	}
-	return
-}
-
-func voteThreadAction(w http.ResponseWriter, in voteThreadInput, db *sql.DB) {
-	threadInfo, err := voteThreadGetThread(in, db)
-	if err != nil {
-		errJson := api.ErrorModel{Message: "Can't find thread"}
-		apiutil.WriteJsonObject(w, errJson, 404)
-		return
-	}
-
+func voteThreadAction(w http.ResponseWriter, in voteThreadInput, db *pgx.ConnPool) {
 	var out voteThreadOutput
 
 	sqlQuery := `
-	INSERT INTO votes (nickname, threadId, voice) VALUES ($1, $2, $3)
-	ON CONFLICT (nickname, threadId) DO UPDATE SET voice = EXCLUDED.voice
+	INSERT INTO votes (nickname, threadId, voice) VALUES (
+		$4,
+		(
+			CASE WHEN $1 IS TRUE
+			THEN $2
+			ELSE (SELECT id FROM threads WHERE slug = $3)
+			END
+		),
+		$5
+	)
+	ON CONFLICT (nickname, threadId) DO UPDATE SET voice = EXCLUDED.voice;
     `
-	_, err = db.Exec(sqlQuery, in.Nickname, threadInfo.Id, in.Voice)
+
+	_, err := db.Exec(sqlQuery, in.HasId, in.Id, in.Slug, in.Nickname, in.Voice)
 
 	if err != nil && dbutil.IsErrorAboutFailedForeignKey(err) {
 		errJson := api.ErrorModel{Message: "Can't find thread"}
@@ -78,15 +68,20 @@ func voteThreadAction(w http.ResponseWriter, in voteThreadInput, db *sql.DB) {
 		return
 	}
 
-	sqlQuery = "SELECT id, title, author, forumSlug, \"message\", votesCount, slug, createdAt FROM threads"
-	if in.HasId {
-		sqlQuery += " WHERE id = $1"
-	} else {
-		sqlQuery += " WHERE slug = $1"
-	}
-	err = db.QueryRow(sqlQuery, in.Slug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.ForumSlug, &out.Message, &out.VotesCount, &out.Slug, &out.CreatedDateStr)
+	sqlQuery = `
+	SELECT id, title, author, forumSlug, "message", votesCount, slug, createdAt FROM threads
+	WHERE (
+		CASE WHEN $1 IS TRUE
+		THEN id = $2
+		ELSE slug = $3
+		END
+	)
+	`
+	var t time.Time
+	err = db.QueryRow(sqlQuery, in.HasId, in.Id, in.Slug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.ForumSlug, &out.Message, &out.VotesCount, &out.Slug, &t)
+	out.CreatedDateStr = t.Format(time.RFC3339Nano)
 	if err != nil {
-		log.Println("error: apithread.showThreadAction: SELECT:", err)
+		log.Println("error: apithread.voteThreadAction: SELECT:", err)
 		w.WriteHeader(500)
 		return
 	}

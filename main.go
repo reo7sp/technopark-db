@@ -11,9 +11,12 @@ import (
 	"github.com/reo7sp/technopark-db/dbutil"
 	"log"
 	"net/http"
+	"runtime"
 )
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	db, err := dbutil.Connect()
 	if err != nil {
 		log.Fatal(err)

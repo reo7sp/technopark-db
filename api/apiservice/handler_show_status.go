@@ -1,14 +1,14 @@
 package apiservice
 
 import (
-	"net/http"
-	"database/sql"
+	"github.com/reo7sp/technopark-db/api"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
-	"github.com/reo7sp/technopark-db/api"
+	"net/http"
+	"github.com/jackc/pgx"
 )
 
-func MakeShowStatusHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeShowStatusHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		showStatusAction(w, db)
 	}
@@ -17,7 +17,7 @@ func MakeShowStatusHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, 
 
 type showStatusOutput api.StatusModel
 
-func showStatusAction(w http.ResponseWriter, db *sql.DB) {
+func showStatusAction(w http.ResponseWriter, db *pgx.ConnPool) {
 	var out showStatusOutput
 
 	sqlQuery := "SELECT (SELECT count(*) FROM forums), (SELECT count(*) FROM threads), (SELECT count(*) FROM users), (SELECT count(*) FROM posts)"

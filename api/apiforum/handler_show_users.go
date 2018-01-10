@@ -1,17 +1,17 @@
 package apiforum
 
 import (
-	"net/http"
-	"database/sql"
-	"log"
-	"github.com/reo7sp/technopark-db/api"
-	"strconv"
 	"fmt"
+	"github.com/reo7sp/technopark-db/api"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
+	"log"
+	"net/http"
+	"strconv"
+	"github.com/jackc/pgx"
 )
 
-func MakeShowUsersHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeShowUsersHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := showUsersRead(r, ps)
 		if err != nil {
@@ -62,7 +62,7 @@ func showUsersRead(r *http.Request, ps map[string]string) (in showUsersInput, er
 	return
 }
 
-func showUsersCheckForumExists(slug string, db *sql.DB) (bool, error) {
+func showUsersCheckForumExists(slug string, db *pgx.ConnPool) (bool, error) {
 	sqlQuery := "SELECT slug FROM forums WHERE slug = $1"
 	var s string
 	err := db.QueryRow(sqlQuery, slug).Scan(&s)
@@ -76,7 +76,7 @@ func showUsersCheckForumExists(slug string, db *sql.DB) (bool, error) {
 	return true, nil
 }
 
-func showUsersAction(w http.ResponseWriter, in showUsersInput, db *sql.DB) {
+func showUsersAction(w http.ResponseWriter, in showUsersInput, db *pgx.ConnPool) {
 	doesForumExists, err := showUsersCheckForumExists(in.Slug, db)
 	if err != nil {
 		log.Println("error: apiforum.showUsersAction: showUsersCheckForumExists:", err)

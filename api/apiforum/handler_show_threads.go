@@ -1,15 +1,16 @@
 package apiforum
 
 import (
-	"net/http"
-	"github.com/reo7sp/technopark-db/apiutil"
-	"database/sql"
-	"log"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/apiutil"
+	"log"
+	"net/http"
 	"strconv"
+	"github.com/jackc/pgx"
+	"time"
 )
 
-func MakeShowThreadsHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeShowThreadsHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := showThreadsRead(r, ps)
 		if err != nil {
@@ -50,7 +51,7 @@ func showThreadsRead(r *http.Request, ps map[string]string) (in showThreadsInput
 	return
 }
 
-func showThreadsAction(w http.ResponseWriter, in showThreadsInput, db *sql.DB) {
+func showThreadsAction(w http.ResponseWriter, in showThreadsInput, db *pgx.ConnPool) {
 	var out showThreadsOutput
 
 	if in.Limit != -1 {
@@ -98,7 +99,9 @@ func showThreadsAction(w http.ResponseWriter, in showThreadsInput, db *sql.DB) {
 	defer rows.Close()
 	for rows.Next() {
 		var outItem showThreadsOutputItem
-		err = rows.Scan(&outItem.Id, &outItem.Title, &outItem.AuthorNickname, &outItem.Message, &outItem.CreatedDateStr, &outItem.VotesCount, &outItem.Slug, &outItem.ForumSlug)
+		var t time.Time
+		err = rows.Scan(&outItem.Id, &outItem.Title, &outItem.AuthorNickname, &outItem.Message, &t, &outItem.VotesCount, &outItem.Slug, &outItem.ForumSlug)
+		outItem.CreatedDateStr = t.Format(time.RFC3339Nano)
 		if err != nil {
 			log.Println("error: apiforum.showThreadsAction: SELECT iter:", err)
 			w.WriteHeader(500)

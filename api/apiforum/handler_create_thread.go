@@ -1,17 +1,17 @@
 package apiforum
 
 import (
-	"net/http"
-	"github.com/reo7sp/technopark-db/apiutil"
-	"database/sql"
-	"log"
 	"errors"
 	"github.com/reo7sp/technopark-db/api"
-	"time"
+	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
+	"log"
+	"net/http"
+	"time"
+	"github.com/jackc/pgx"
 )
 
-func MakeCreateThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeCreateThreadHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := createThreadRead(r, ps)
 		if err != nil {
@@ -36,10 +36,6 @@ type createThreadInput struct {
 
 type createThreadOutput api.ThreadModel
 
-type createThreadGetForumInfo struct {
-	ForumSlug string
-}
-
 func createThreadRead(r *http.Request, ps map[string]string) (in createThreadInput, err error) {
 	slug, ok := ps["slug"]
 	in.ForumSlug = slug
@@ -53,32 +49,15 @@ func createThreadRead(r *http.Request, ps map[string]string) (in createThreadInp
 	return
 }
 
-func createThreadGetForum(in createThreadInput, db *sql.DB) (r createThreadGetForumInfo, err error) {
-	sqlQuery := "SELECT slug FROM forums WHERE slug = $1"
-	err = db.QueryRow(sqlQuery, in.ForumSlug).Scan(&r.ForumSlug)
-	return
-}
-
-func createThreadAction(w http.ResponseWriter, in createThreadInput, db *sql.DB) {
-	forumInfo, err := createThreadGetForum(in, db)
-	if err != nil {
-		errJson := api.ErrorModel{Message: "Can't find forum"}
-		apiutil.WriteJsonObject(w, errJson, 404)
-		return
-	}
-
+func createThreadAction(w http.ResponseWriter, in createThreadInput, db *pgx.ConnPool) {
 	var out createThreadOutput
-
-	out.ForumSlug = forumInfo.ForumSlug
 
 	if in.CreatedAtStr == "" {
 		in.CreatedAtStr = time.Now().Format(time.RFC3339)
 	}
 
-	sqlQuery := "INSERT INTO threads (slug, title, author, forumSlug, \"message\", createdAt) VALUES ($1::CITEXT, $2, $3, $4, $5, $6) RETURNING id"
-	err = db.QueryRow(sqlQuery, in.ThreadSlug, in.Title, in.Author, in.ForumSlug, in.Message, in.CreatedAtStr).Scan(&out.Id)
-
-	log.Println("warning: apiforum.createThreadAction: INSERT:", err)
+	sqlQuery := "INSERT INTO threads (slug, title, author, forumSlug, \"message\", createdAt) VALUES ($1::CITEXT, $2, $3, (SELECT slug FROM forums WHERE slug = $4), $5, $6) RETURNING id, forumSlug"
+	err := db.QueryRow(sqlQuery, in.ThreadSlug, in.Title, in.Author, in.ForumSlug, in.Message, in.CreatedAtStr).Scan(&out.Id, &out.ForumSlug)
 
 	if err != nil && dbutil.IsErrorAboutFailedForeignKey(err) {
 		errJson := api.ErrorModel{Message: "Can't find user"}
@@ -86,8 +65,10 @@ func createThreadAction(w http.ResponseWriter, in createThreadInput, db *sql.DB)
 		return
 	}
 	if err != nil && dbutil.IsErrorAboutDublicate(err) {
-		sqlQuery := "SELECT id, title, author, \"message\", createdAt, slug, forumSlug, createdAt FROM threads WHERE slug = $1::CITEXT"
-		err := db.QueryRow(sqlQuery, in.ThreadSlug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.Message, &out.CreatedDateStr, &out.Slug, &out.ForumSlug, &out.CreatedDateStr)
+		sqlQuery := "SELECT id, title, author, \"message\", createdAt, slug, forumSlug FROM threads WHERE slug = $1::CITEXT"
+		var t time.Time
+		err := db.QueryRow(sqlQuery, in.ThreadSlug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.Message, &t, &out.Slug, &out.ForumSlug)
+		out.CreatedDateStr = t.Format(time.RFC3339Nano)
 
 		if err != nil {
 			log.Println("error: apiforum.createThreadAction: SELECT:", err)

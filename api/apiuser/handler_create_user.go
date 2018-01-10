@@ -1,15 +1,15 @@
 package apiuser
 
 import (
-	"net/http"
-	"database/sql"
-	"github.com/reo7sp/technopark-db/apiutil"
-	"log"
-	"github.com/reo7sp/technopark-db/dbutil"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/apiutil"
+	"github.com/reo7sp/technopark-db/dbutil"
+	"log"
+	"net/http"
+	"github.com/jackc/pgx"
 )
 
-func MakeCreateUserHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeCreateUserHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := createUserRead(r, ps)
 		if err != nil {
@@ -40,7 +40,7 @@ func createUserRead(r *http.Request, ps map[string]string) (in createUserInput, 
 	return
 }
 
-func createUserAction(w http.ResponseWriter, in createUserInput, db *sql.DB) {
+func createUserAction(w http.ResponseWriter, in createUserInput, db *pgx.ConnPool) {
 	var out createUserOutput
 
 	sqlQuery := "INSERT INTO users (nickname, fullname, about, email) VALUES ($1, $2, $3, $4)"

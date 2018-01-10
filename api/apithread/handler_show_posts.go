@@ -1,17 +1,18 @@
 package apithread
 
 import (
-	"net/http"
-	"github.com/reo7sp/technopark-db/apiutil"
-	"database/sql"
-	"log"
-	"github.com/reo7sp/technopark-db/api"
-	"strconv"
 	"fmt"
+	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
+	"log"
+	"net/http"
+	"strconv"
+	"github.com/jackc/pgx"
+	"time"
 )
 
-func MakeShowPostsHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeShowPostsHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := showPostsRead(r, ps)
 		if err != nil {
@@ -67,7 +68,7 @@ func showPostsRead(r *http.Request, ps map[string]string) (in showPostsInput, er
 	return
 }
 
-func showPostsCheckThreadExists(in slugOrIdInput, db *sql.DB) (bool, error) {
+func showPostsCheckThreadExists(in slugOrIdInput, db *pgx.ConnPool) (bool, error) {
 	sqlQuery := "SELECT id FROM threads WHERE"
 	if in.HasId {
 		sqlQuery += " id = $1"
@@ -86,7 +87,7 @@ func showPostsCheckThreadExists(in slugOrIdInput, db *sql.DB) (bool, error) {
 	return true, nil
 }
 
-func showPostsAction(w http.ResponseWriter, in showPostsInput, db *sql.DB) {
+func showPostsAction(w http.ResponseWriter, in showPostsInput, db *pgx.ConnPool) {
 	doesThreadExists, err := showPostsCheckThreadExists(in.slugOrIdInput, db)
 	if err != nil {
 		log.Println("error: apithread.showPostsAction: showPostsCheckThreadExists:", err)
@@ -237,9 +238,11 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *sql.DB) {
 	defer rows.Close()
 	for rows.Next() {
 		var outItem showPostsOutputItem
+		var t time.Time
 		err = rows.Scan(
 			&outItem.Id, &outItem.ParentPostId, &outItem.AuthorNickname, &outItem.Message, &outItem.IsEdited,
-			&outItem.ForumSlug, &outItem.ThreadId, &outItem.CreatedDateStr)
+			&outItem.ForumSlug, &outItem.ThreadId, &t)
+		outItem.CreatedDateStr = t.Format(time.RFC3339Nano)
 		if err != nil {
 			log.Println("error: apithread.showPostsAction: SELECT iter:", err)
 			w.WriteHeader(500)

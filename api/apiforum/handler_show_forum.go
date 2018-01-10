@@ -1,16 +1,16 @@
 package apiforum
 
 import (
-	"net/http"
-	"database/sql"
-	"github.com/reo7sp/technopark-db/apiutil"
-	"log"
 	"errors"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
+	"log"
+	"net/http"
+	"github.com/jackc/pgx"
 )
 
-func MakeShowForumHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeShowForumHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := showForumRead(r, ps)
 		if err != nil {
@@ -38,7 +38,7 @@ func showForumRead(r *http.Request, ps map[string]string) (in showForumInput, er
 	return
 }
 
-func showForumAction(w http.ResponseWriter, in showForumInput, db *sql.DB) {
+func showForumAction(w http.ResponseWriter, in showForumInput, db *pgx.ConnPool) {
 	var out showForumOutput
 
 	sqlQuery := "SELECT slug, title, \"user\", postsCount, threadsCount FROM forums WHERE slug = $1"

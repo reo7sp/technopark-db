@@ -1,16 +1,16 @@
 package apiuser
 
 import (
-	"net/http"
-	"database/sql"
-	"github.com/reo7sp/technopark-db/apiutil"
-	"log"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
+	"log"
+	"net/http"
 	"strconv"
+	"github.com/jackc/pgx"
 )
 
-func MakeEditUserHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeEditUserHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := editUserRead(r, ps)
 		if err != nil {
@@ -39,7 +39,7 @@ func editUserRead(r *http.Request, ps map[string]string) (in editUserInput, err 
 	return
 }
 
-func editUserAction(w http.ResponseWriter, in editUserInput, db *sql.DB) {
+func editUserAction(w http.ResponseWriter, in editUserInput, db *pgx.ConnPool) {
 	var out editUserOutput
 
 	sqlQuery := "UPDATE users SET"

@@ -1,15 +1,16 @@
 package apithread
 
 import (
-	"net/http"
-	"database/sql"
-	"github.com/reo7sp/technopark-db/apiutil"
-	"log"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
+	"log"
+	"net/http"
+	"github.com/jackc/pgx"
+	"time"
 )
 
-func MakeEditThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeEditThreadHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := editThreadRead(r, ps)
 		if err != nil {
@@ -37,7 +38,7 @@ func editThreadRead(r *http.Request, ps map[string]string) (in editThreadInput, 
 	return
 }
 
-func editThreadAction(w http.ResponseWriter, in editThreadInput, db *sql.DB) {
+func editThreadAction(w http.ResponseWriter, in editThreadInput, db *pgx.ConnPool) {
 	var out editThreadOutput
 
 	sqlQuery := "UPDATE threads SET title = COALESCE($1, title), \"message\" = COALESCE($2, \"message\")"
@@ -51,7 +52,9 @@ func editThreadAction(w http.ResponseWriter, in editThreadInput, db *sql.DB) {
 	}
 	sqlQuery += " RETURNING author, createdAt, forumSlug, id, \"message\", slug, title"
 
-	err := db.QueryRow(sqlQuery, sqlFields...).Scan(&out.AuthorNickname, &out.CreatedDateStr, &out.ForumSlug, &out.Id, &out.Message, &out.Slug, &out.Title)
+	var t time.Time
+	err := db.QueryRow(sqlQuery, sqlFields...).Scan(&out.AuthorNickname, &t, &out.ForumSlug, &out.Id, &out.Message, &out.Slug, &out.Title)
+	out.CreatedDateStr = t.Format(time.RFC3339Nano)
 
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {
 		errJson := api.ErrorModel{Message: "Can't find thread"}

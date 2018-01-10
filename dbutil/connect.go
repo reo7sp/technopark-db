@@ -1,19 +1,18 @@
 package dbutil
 
 import (
-	"database/sql"
-	_ "github.com/lib/pq"
 	"io/ioutil"
-	"os"
+	"github.com/jackc/pgx"
 )
 
-func Connect() (*sql.DB, error) {
-	dbUrl := os.Getenv("DATABASE_URL")
+func Connect() (*pgx.ConnPool, error) {
+	connConfig, err := pgx.ParseEnvLibpq()
 
-	db, err := sql.Open("postgres", dbUrl)
-	if err != nil {
-		return nil, err
-	}
+	db, err := pgx.NewConnPool(
+		pgx.ConnPoolConfig{
+			ConnConfig:     connConfig,
+			MaxConnections: 8,
+		})
 
 	err = createTables(db)
 	if err != nil {
@@ -23,7 +22,7 @@ func Connect() (*sql.DB, error) {
 	return db, err
 }
 
-func createTables(db *sql.DB) error {
+func createTables(db *pgx.ConnPool) error {
 	b, err := ioutil.ReadFile("migrations/init.sql")
 	if err != nil {
 		return nil

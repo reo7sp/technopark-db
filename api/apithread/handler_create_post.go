@@ -3,15 +3,17 @@ package apithread
 import (
 	"net/http"
 	"github.com/reo7sp/technopark-db/apiutil"
-	"database/sql"
 	"log"
 	"github.com/reo7sp/technopark-db/api"
 	"strconv"
 	"fmt"
 	"github.com/reo7sp/technopark-db/dbutil"
+	"github.com/jackc/pgx"
+	"time"
+	"strings"
 )
 
-func MakeCreatePostHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeCreatePostHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := createPostRead(r, ps)
 		if err != nil {
@@ -71,48 +73,31 @@ func createPostRead(r *http.Request, ps map[string]string) (in createPostInput, 
 	return
 }
 
-func createPostCheckPostsParents(threadId int64, Posts []createPostInputItem, db *sql.DB) (bool, error) {
-	sqlQuery := "SELECT threadId FROM posts WHERE id IN (0"
+func createPostCheckPostsParents(in createPostInput, db *pgx.ConnPool) (ok bool, err error) {
+	parentIdsStrs := make([]string, 0, len(in.Posts))
 	needToExecQuery := false
-	for _, post := range Posts {
+	for _, post := range in.Posts {
 		if post.Parent == 0 {
 			continue
 		}
 		needToExecQuery = true
-		sqlQuery += ", " + strconv.FormatInt(post.Parent, 10)
+		parentIdsStrs = append(parentIdsStrs, strconv.FormatInt(post.Parent, 10))
 	}
-	sqlQuery += ")"
 
 	if !needToExecQuery {
 		return true, nil
 	}
 
-	rows, err := db.Query(sqlQuery)
-	if err != nil {
-		return false, err
-	}
+	sqlQuery := fmt.Sprintf(`
+	SELECT (
+		CASE WHEN $1 IS TRUE
+		THEN $2
+		ELSE (SELECT id FROM threads WHERE slug = $3)
+		END
+	) = ALL (SELECT threadId FROM posts WHERE id IN (%s))
+	`, strings.Join(parentIdsStrs, ","))
 
-	defer rows.Close()
-	for rows.Next() {
-		var id int64
-		rows.Scan(&id)
-		if id != threadId {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
-func createPostGetThread(in createPostInput, db *sql.DB) (r createPostGetThreadInfo, err error) {
-	if in.HasId {
-		r.Id = in.Id
-		sqlQuery := "SELECT slug, forumSlug FROM threads WHERE id = $1"
-		err = db.QueryRow(sqlQuery, in.Id).Scan(&r.Slug, &r.ForumSlug)
-	} else {
-		r.Slug = &in.Slug
-		sqlQuery := "SELECT id, forumSlug FROM threads WHERE slug = $1"
-		err = db.QueryRow(sqlQuery, in.Slug).Scan(&r.Id, &r.ForumSlug)
-	}
+	err = db.QueryRow(sqlQuery, in.HasId, in.Id, in.Slug).Scan(&ok)
 	return
 }
 
@@ -121,27 +106,25 @@ func createPostGenerateNextPlaceholder(i *int64) string {
 	return "$" + strconv.FormatInt(*i, 10)
 }
 
-func createPostAction(w http.ResponseWriter, in createPostInput, db *sql.DB) {
+func createPostAction(w http.ResponseWriter, in createPostInput, db *pgx.ConnPool) {
 	out := make(createPostOutput, 0, len(in.Posts))
 
-	threadInfo, err := createPostGetThread(in, db)
-	if err != nil && dbutil.IsErrorAboutNotFound(err) {
-		errJson := api.ErrorModel{Message: "Can't find post thread"}
-		apiutil.WriteJsonObject(w, errJson, 404)
-		return
-	}
-	if err != nil {
-		log.Println("error: apithread.createPostAction: createPostGetThread:", err)
-		w.WriteHeader(500)
-		return
-	}
-
 	if len(in.Posts) == 0 {
+		sqlQuery := "SELECT 1 FROM threads WHERE (CASE WHEN $1 IS TRUE THEN id = $2 ELSE slug = $3 END)"
+		var ok int8
+		err := db.QueryRow(sqlQuery, in.HasId, in.Id, in.Slug).Scan(&ok)
+
+		if err != nil {
+			errJson := api.ErrorModel{Message: "Can't find post thread"}
+			apiutil.WriteJsonObject(w, errJson, 404)
+			return
+		}
+
 		apiutil.WriteJsonObject(w, out, 201)
 		return
 	}
 
-	ok, err := createPostCheckPostsParents(threadInfo.Id, in.Posts, db)
+	ok, err := createPostCheckPostsParents(in, db)
 	if err != nil {
 		log.Println("error: apithread.createPostAction: createPostCheckPostsParents:", err)
 		w.WriteHeader(500)
@@ -153,36 +136,39 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *sql.DB) {
 		return
 	}
 
-
 	sqlQuery := "INSERT INTO posts (parent, author, \"message\", forumSlug, threadId, threadSlug) VALUES"
-	sqlValues := make([]interface{}, 0, 6*len(in.Posts))
-	placeholderIndex := int64(0)
+	sqlValues := make([]interface{}, 0, 5*len(in.Posts))
+	sqlValues = append(sqlValues, in.HasId, in.Id, in.Slug)
+	placeholderIndex := int64(0+3)
 	for i, post := range in.Posts {
-		sqlQuery += fmt.Sprintf(" (%s, %s, %s, %s, %s, %s)",
-			createPostGenerateNextPlaceholder(&placeholderIndex),
-			createPostGenerateNextPlaceholder(&placeholderIndex),
-			createPostGenerateNextPlaceholder(&placeholderIndex),
-			createPostGenerateNextPlaceholder(&placeholderIndex),
+		sqlQuery += fmt.Sprintf(` (
+			%s,
+			%s,
+			%s,
+			(SELECT forumSlug FROM threads WHERE (CASE WHEN $1 IS TRUE THEN id = $2 ELSE slug = $3 END)),
+			(CASE WHEN $1 IS TRUE THEN $2 ELSE (SELECT id FROM threads WHERE slug = $3) END),
+			(CASE WHEN $1 IS TRUE THEN (SELECT slug FROM threads WHERE id = $2) ELSE $3 END)
+		)`, createPostGenerateNextPlaceholder(&placeholderIndex),
 			createPostGenerateNextPlaceholder(&placeholderIndex),
 			createPostGenerateNextPlaceholder(&placeholderIndex))
 		if i != len(in.Posts)-1 {
 			sqlQuery += ","
 		}
-		sqlValues = append(sqlValues, post.ParentOrNil, post.Author, post.Message, threadInfo.ForumSlug, threadInfo.Id, threadInfo.Slug)
+		sqlValues = append(sqlValues, post.ParentOrNil, post.Author, post.Message)
 	}
-	sqlQuery += " RETURNING id, createdAt"
+	sqlQuery += " RETURNING id, createdAt, forumSlug, threadId"
 
 	rows, err := db.Query(sqlQuery, sqlValues...)
 
 	if err != nil {
-		ok, constaint := dbutil.IsErrorAboutFailedForeignKeyReturnConstaint(err)
+		ok, constraint := dbutil.IsErrorAboutFailedForeignKeyReturnConstraint(err)
 
-		if ok && constaint == "posts_parent_fkey" {
+		if ok && constraint == "posts_parent_fkey" {
 			errJson := api.ErrorModel{Message: "Parent post was created in another thread"}
 			apiutil.WriteJsonObject(w, errJson, 409)
 			return
 		}
-		if ok && constaint == "posts_author_fkey" {
+		if ok && constraint == "posts_author_fkey" {
 			errJson := api.ErrorModel{Message: "Can't find post author"}
 			apiutil.WriteJsonObject(w, errJson, 404)
 			return
@@ -193,10 +179,13 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *sql.DB) {
 	}
 
 	defer rows.Close()
-	for i := 0; rows.Next(); i++ {
+	i := 0
+	for ; rows.Next(); i++ {
 		var outItem createPostOutputItem
 
-		err = rows.Scan(&outItem.Id, &outItem.CreatedDateStr)
+		var t time.Time
+		err = rows.Scan(&outItem.Id, &t, &outItem.ForumSlug, &outItem.ThreadId)
+		outItem.CreatedDateStr = t.Format(time.RFC3339Nano)
 		if err != nil {
 			log.Println("error: apithread.createPostAction: INSERT scan iter:", err)
 			w.WriteHeader(500)
@@ -207,10 +196,20 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *sql.DB) {
 		outItem.AuthorNickname = in.Posts[i].Author
 		outItem.Message = in.Posts[i].Message
 		outItem.IsEdited = false
-		outItem.ForumSlug = threadInfo.ForumSlug
-		outItem.ThreadId = threadInfo.Id
 
 		out = append(out, outItem)
+	}
+
+	if i == 0 && len(in.Posts) != 0 {
+		if in.Posts[0].Parent == 0 {
+			errJson := api.ErrorModel{Message: "Can't find post author"}
+			apiutil.WriteJsonObject(w, errJson, 404)
+			return
+		} else {
+			errJson := api.ErrorModel{Message: "Parent post was created in another thread"}
+			apiutil.WriteJsonObject(w, errJson, 409)
+			return
+		}
 	}
 
 	apiutil.WriteJsonObject(w, out, 201)

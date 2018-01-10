@@ -1,17 +1,18 @@
 package apipost
 
 import (
-	"net/http"
-	"database/sql"
+	"github.com/reo7sp/technopark-db/api"
 	"github.com/reo7sp/technopark-db/apiutil"
+	"github.com/reo7sp/technopark-db/dbutil"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
-	"github.com/reo7sp/technopark-db/api"
-	"github.com/reo7sp/technopark-db/dbutil"
+	"github.com/jackc/pgx"
+	"time"
 )
 
-func MakeShowPostHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeShowPostHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := showPostRead(r, ps)
 		if err != nil {
@@ -67,7 +68,7 @@ func showPostRead(r *http.Request, ps map[string]string) (in showPostInput, err 
 	return
 }
 
-func showPostAction(w http.ResponseWriter, in showPostInput, db *sql.DB) {
+func showPostAction(w http.ResponseWriter, in showPostInput, db *pgx.ConnPool) {
 	var outBuilder showPostOutputBuilder
 	out := make(showPostOutput)
 
@@ -78,9 +79,10 @@ func showPostAction(w http.ResponseWriter, in showPostInput, db *sql.DB) {
 	sqlScans := make([]interface{}, 0, maxCountOfSqlScans)
 
 	sqlFields += " p.id, p.parent, p.author, p.message, p.isEdited, p.forumSlug, p.threadId, p.createdAt"
+	var t1 time.Time
 	sqlScans = append(sqlScans,
 		&outBuilder.Post.Id, &outBuilder.Post.ParentPostId, &outBuilder.Post.AuthorNickname, &outBuilder.Post.Message,
-		&outBuilder.Post.IsEdited, &outBuilder.Post.ForumSlug, &outBuilder.Post.ThreadId, &outBuilder.Post.CreatedDateStr)
+		&outBuilder.Post.IsEdited, &outBuilder.Post.ForumSlug, &outBuilder.Post.ThreadId, &t1)
 
 	if in.NeedUser {
 		sqlJoins += " JOIN users u ON (u.nickname = p.author)"
@@ -97,17 +99,23 @@ func showPostAction(w http.ResponseWriter, in showPostInput, db *sql.DB) {
 			&outBuilder.Forum.PostsCount, &outBuilder.Forum.ThreadsCount)
 	}
 
+	var t2 time.Time
 	if in.NeedThread {
 		sqlJoins += " JOIN threads t ON (t.id = p.threadId)"
 		sqlFields += ", t.id, t.title, t.author, t.forumSlug, t.message, t.createdAt, t.slug"
 		sqlScans = append(sqlScans,
 			&outBuilder.Thread.Id, &outBuilder.Thread.Title, &outBuilder.Thread.AuthorNickname, &outBuilder.Thread.ForumSlug,
-			&outBuilder.Thread.Message, &outBuilder.Thread.CreatedDateStr, &outBuilder.Thread.Slug)
+			&outBuilder.Thread.Message, &t2, &outBuilder.Thread.Slug)
 	}
 
 	sqlQuery := "SELECT " + sqlFields + " FROM posts p " + sqlJoins + " WHERE p.id = $1"
 
 	err := db.QueryRow(sqlQuery, in.Id).Scan(sqlScans...)
+
+	outBuilder.Post.CreatedDateStr = t1.Format(time.RFC3339Nano)
+	if in.NeedThread {
+		outBuilder.Thread.CreatedDateStr = t2.Format(time.RFC3339Nano)
+	}
 
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {
 		errJson := api.ErrorModel{Message: "Can't find post"}

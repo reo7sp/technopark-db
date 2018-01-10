@@ -1,15 +1,15 @@
 package apiforum
 
 import (
-	"database/sql"
-	"net/http"
+	"github.com/reo7sp/technopark-db/api"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
 	"log"
-	"github.com/reo7sp/technopark-db/api"
+	"net/http"
+	"github.com/jackc/pgx"
 )
 
-func MakeCreateForumHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeCreateForumHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := createForumRead(r, ps)
 		if err != nil {
@@ -39,13 +39,13 @@ func createForumRead(r *http.Request, ps map[string]string) (in createForumInput
 	return
 }
 
-func createForumGetUser(in createForumInput, db *sql.DB) (r createForumGetUserInfo, err error) {
+func createForumGetUser(in createForumInput, db *pgx.ConnPool) (r createForumGetUserInfo, err error) {
 	sqlQuery := "SELECT nickname FROM users WHERE nickname = $1"
 	err = db.QueryRow(sqlQuery, in.User).Scan(&r.Nickname)
 	return
 }
 
-func createForumAction(w http.ResponseWriter, in createForumInput, db *sql.DB) {
+func createForumAction(w http.ResponseWriter, in createForumInput, db *pgx.ConnPool) {
 	forumInfo, err := createForumGetUser(in, db)
 
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {

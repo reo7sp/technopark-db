@@ -1,15 +1,16 @@
 package apithread
 
 import (
-	"net/http"
-	"database/sql"
-	"github.com/reo7sp/technopark-db/apiutil"
-	"log"
 	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
+	"log"
+	"net/http"
+	"github.com/jackc/pgx"
+	"time"
 )
 
-func MakeShowThreadHandler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeShowThreadHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := showThreadRead(r, ps)
 		if err != nil {
@@ -33,17 +34,21 @@ func showThreadRead(r *http.Request, ps map[string]string) (in showThreadInput, 
 	return
 }
 
-func showThreadAction(w http.ResponseWriter, in showThreadInput, db *sql.DB) {
+func showThreadAction(w http.ResponseWriter, in showThreadInput, db *pgx.ConnPool) {
 	var out showThreadOutput
 
-	sqlQuery := "SELECT id, title, author, forumSlug, \"message\", votesCount, slug, createdAt FROM threads"
-	if in.HasId {
-		sqlQuery += " WHERE id = $1"
-	} else {
-		sqlQuery += " WHERE slug = $1"
-	}
-
-	err := db.QueryRow(sqlQuery, in.Slug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.ForumSlug, &out.Message, &out.VotesCount, &out.Slug, &out.CreatedDateStr)
+	sqlQuery := `
+	SELECT id, title, author, forumSlug, "message", votesCount, slug, createdAt FROM threads
+	WHERE (
+		CASE WHEN $1 IS TRUE
+		THEN id = $2
+		ELSE slug = $3
+		END
+	)
+	`
+	var t time.Time
+	err := db.QueryRow(sqlQuery, in.HasId, in.Id, in.Slug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.ForumSlug, &out.Message, &out.VotesCount, &out.Slug, &t)
+	out.CreatedDateStr = t.Format(time.RFC3339Nano)
 
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {
 		errJson := api.ErrorModel{Message: "Can't find thread"}

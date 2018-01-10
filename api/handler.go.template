@@ -1,4 +1,4 @@
-func Make${Name}Handler(db *sql.DB) func(http.ResponseWriter, *http.Request, map[string]string) {
+func Make${Name}Handler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := ${name}Read(r, ps)
 		if err != nil {
@@ -22,7 +22,7 @@ func ${name}Read(r *http.Request, ps map[string]string) (in ${name}Input, err er
 	return
 }
 
-func ${name}Action(w http.ResponseWriter, in ${name}Input, db *sql.DB) {
+func ${name}Action(w http.ResponseWriter, in ${name}Input, db *pgx.ConnPool) {
 	var out ${name}Output
 
     // TODO

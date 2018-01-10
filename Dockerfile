@@ -28,7 +28,8 @@ COPY . .
 RUN go get ./...
 RUN go build
 
-ENV DATABASE_URL postgres://technopark:technopark@localhost/technopark?sslmode=disable
+ENV PGHOST /tmp/.s.PGSQL.5432
+ENV PGDATABASE technopark
 EXPOSE 5000
 CMD /etc/init.d/postgresql start && \
     sleep 10 && \
