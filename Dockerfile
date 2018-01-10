@@ -31,6 +31,8 @@ RUN go build
 
 ENV PGHOST /var/run/postgresql
 ENV PGDATABASE technopark
+ENV PGUSER tecnopark
+ENV PGPASSWORD tecnopark
 EXPOSE 5000
 CMD /etc/init.d/postgresql start && \
     sleep 10 && \
