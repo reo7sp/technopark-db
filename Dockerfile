@@ -22,7 +22,7 @@ RUN /etc/init.d/postgresql start && \
     createdb -E UTF8 -T template0 -O technopark technopark && \
     /etc/init.d/postgresql stop
 RUN ln -s /var/run/postgresql/10-main.pid /var/run/postgresql/.s.PGSQL.5432
-RUN echo "local all all md5" >> /etc/postgresql/10/main/pg_hba.conf
+RUN echo "local all all md5" > /etc/postgresql/10/main/pg_hba.conf
 
 USER root
 WORKDIR /go/src/github.com/reo7sp/technopark-db
