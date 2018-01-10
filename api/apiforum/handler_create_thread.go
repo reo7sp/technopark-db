@@ -79,14 +79,14 @@ func createThreadAction(w http.ResponseWriter, in createThreadInput, db *sql.DB)
 	sqlQuery := "INSERT INTO threads (slug, title, author, forumSlug, \"message\", createdAt) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id"
 	err = db.QueryRow(sqlQuery, in.ThreadSlug, in.Title, in.Author, in.ForumSlug, in.Message, in.CreatedAtStr).Scan(&out.Id)
 
+	log.Println("warning: apiforum.createThreadAction: INSERT:", err)
+
 	if err != nil && dbutil.IsErrorAboutFailedForeignKey(err) {
 		errJson := api.ErrorModel{Message: "Can't find user"}
 		apiutil.WriteJsonObject(w, errJson, 404)
 		return
 	}
 	if err != nil && dbutil.IsErrorAboutDublicate(err) {
-		log.Println("warning: apiforum.createThreadAction: INSERT:", err)
-
 		sqlQuery := "SELECT id, title, author, \"message\", createdAt, slug, forumSlug, createdAt FROM threads WHERE slug = $1"
 		err := db.QueryRow(sqlQuery, in.ThreadSlug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.Message, &out.CreatedDateStr, &out.Slug, &out.ForumSlug, &out.CreatedDateStr)
 
