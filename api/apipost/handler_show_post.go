@@ -112,9 +112,9 @@ func showPostAction(w http.ResponseWriter, in showPostInput, db *pgx.ConnPool) {
 
 	err := db.QueryRow(sqlQuery, in.Id).Scan(sqlScans...)
 
-	outBuilder.Post.CreatedDateStr = t1.Format(time.RFC3339Nano)
+	outBuilder.Post.CreatedDateStr = t1.UTC().Format(api.TIMEFORMAT)
 	if in.NeedThread {
-		outBuilder.Thread.CreatedDateStr = t2.Format(time.RFC3339Nano)
+		outBuilder.Thread.CreatedDateStr = t2.UTC().Format(api.TIMEFORMAT)
 	}
 
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {

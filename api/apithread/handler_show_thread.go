@@ -48,7 +48,7 @@ func showThreadAction(w http.ResponseWriter, in showThreadInput, db *pgx.ConnPoo
 	`
 	var t time.Time
 	err := db.QueryRow(sqlQuery, in.HasId, in.Id, in.Slug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.ForumSlug, &out.Message, &out.VotesCount, &out.Slug, &t)
-	out.CreatedDateStr = t.Format(time.RFC3339Nano)
+	out.CreatedDateStr = t.UTC().Format(api.TIMEFORMAT)
 
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {
 		errJson := api.ErrorModel{Message: "Can't find thread"}

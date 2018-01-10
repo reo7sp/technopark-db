@@ -68,7 +68,7 @@ func createThreadAction(w http.ResponseWriter, in createThreadInput, db *pgx.Con
 		sqlQuery := "SELECT id, title, author::text, \"message\", createdAt, slug::text, forumSlug::text FROM threads WHERE slug = $1::citext"
 		var t time.Time
 		err := db.QueryRow(sqlQuery, in.ThreadSlug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.Message, &t, &out.Slug, &out.ForumSlug)
-		out.CreatedDateStr = t.Format(time.RFC3339Nano)
+		out.CreatedDateStr = t.UTC().Format(api.TIMEFORMAT)
 
 		if err != nil {
 			log.Println("error: apiforum.createThreadAction: SELECT:", err)

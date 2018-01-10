@@ -4,6 +4,8 @@ import (
 	"regexp"
 )
 
+const TIMEFORMAT = "2006-01-02T15:04:05.999Z"
+
 type ErrorModel struct {
 	Message string
 }

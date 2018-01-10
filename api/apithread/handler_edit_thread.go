@@ -47,14 +47,14 @@ func editThreadAction(w http.ResponseWriter, in editThreadInput, db *pgx.ConnPoo
 		sqlQuery += " WHERE id = $3"
 		sqlFields[2] = in.Id
 	} else {
-		sqlQuery += " WHERE slug = $3"
+		sqlQuery += " WHERE slug = $3::citext"
 		sqlFields[2] = in.Slug
 	}
 	sqlQuery += " RETURNING author::text, createdAt, forumSlug::text, id, \"message\", slug::text, title"
 
 	var t time.Time
 	err := db.QueryRow(sqlQuery, sqlFields...).Scan(&out.AuthorNickname, &t, &out.ForumSlug, &out.Id, &out.Message, &out.Slug, &out.Title)
-	out.CreatedDateStr = t.Format(time.RFC3339Nano)
+	out.CreatedDateStr = t.UTC().Format(api.TIMEFORMAT)
 
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {
 		errJson := api.ErrorModel{Message: "Can't find thread"}

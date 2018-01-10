@@ -79,7 +79,7 @@ func voteThreadAction(w http.ResponseWriter, in voteThreadInput, db *pgx.ConnPoo
 	`
 	var t time.Time
 	err = db.QueryRow(sqlQuery, in.HasId, in.Id, in.Slug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.ForumSlug, &out.Message, &out.VotesCount, &out.Slug, &t)
-	out.CreatedDateStr = t.Format(time.RFC3339Nano)
+	out.CreatedDateStr = t.UTC().Format(api.TIMEFORMAT)
 	if err != nil {
 		log.Println("error: apithread.voteThreadAction: SELECT:", err)
 		w.WriteHeader(500)

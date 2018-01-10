@@ -101,7 +101,7 @@ func showThreadsAction(w http.ResponseWriter, in showThreadsInput, db *pgx.ConnP
 		var outItem showThreadsOutputItem
 		var t time.Time
 		err = rows.Scan(&outItem.Id, &outItem.Title, &outItem.AuthorNickname, &outItem.Message, &t, &outItem.VotesCount, &outItem.Slug, &outItem.ForumSlug)
-		outItem.CreatedDateStr = t.Format(time.RFC3339Nano)
+		outItem.CreatedDateStr = t.UTC().Format(api.TIMEFORMAT)
 		if err != nil {
 			log.Println("error: apiforum.showThreadsAction: SELECT iter:", err)
 			w.WriteHeader(500)

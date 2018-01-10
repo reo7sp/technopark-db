@@ -185,7 +185,7 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *pgx.ConnPoo
 
 		var t time.Time
 		err = rows.Scan(&outItem.Id, &t, &outItem.ForumSlug, &outItem.ThreadId)
-		outItem.CreatedDateStr = t.Format(time.RFC3339Nano)
+		outItem.CreatedDateStr = t.UTC().Format(api.TIMEFORMAT)
 		if err != nil {
 			log.Println("error: apithread.createPostAction: INSERT scan iter:", err)
 			w.WriteHeader(500)

@@ -242,7 +242,7 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *pgx.ConnPool)
 		err = rows.Scan(
 			&outItem.Id, &outItem.ParentPostId, &outItem.AuthorNickname, &outItem.Message, &outItem.IsEdited,
 			&outItem.ForumSlug, &outItem.ThreadId, &t)
-		outItem.CreatedDateStr = t.Format(time.RFC3339Nano)
+		outItem.CreatedDateStr = t.UTC().Format(api.TIMEFORMAT)
 		if err != nil {
 			log.Println("error: apithread.showPostsAction: SELECT iter:", err)
 			w.WriteHeader(500)

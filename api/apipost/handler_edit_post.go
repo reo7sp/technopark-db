@@ -51,7 +51,7 @@ func editPostAction(w http.ResponseWriter, in editPostInput, db *pgx.ConnPool) {
 	sqlQuery := "UPDATE posts SET \"message\" = COALESCE($1, \"message\"), isEdited = ($1 IS NOT NULL AND $1 <> \"message\") WHERE id = $2 RETURNING author::text, createdAt, forumSlug::text, isEdited, threadId, \"message\""
 	var t time.Time
 	err := db.QueryRow(sqlQuery, in.Message, in.Id).Scan(&out.AuthorNickname, &t, &out.ForumSlug, &out.IsEdited, &out.ThreadId, &out.Message)
-	out.CreatedDateStr = t.Format(time.RFC3339Nano)
+	out.CreatedDateStr = t.UTC().Format(api.TIMEFORMAT)
 
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {
 		errJson := api.ErrorModel{Message: "Can't find post"}
