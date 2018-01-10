@@ -76,7 +76,7 @@ func createThreadAction(w http.ResponseWriter, in createThreadInput, db *sql.DB)
 		in.CreatedAtStr = time.Now().Format(time.RFC3339)
 	}
 
-	sqlQuery := "INSERT INTO threads (slug, title, author, forumSlug, \"message\", createdAt) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id"
+	sqlQuery := "INSERT INTO threads (slug, title, author, forumSlug, \"message\", createdAt) VALUES ($1::CITEXT, $2, $3, $4, $5, $6) RETURNING id"
 	err = db.QueryRow(sqlQuery, in.ThreadSlug, in.Title, in.Author, in.ForumSlug, in.Message, in.CreatedAtStr).Scan(&out.Id)
 
 	log.Println("warning: apiforum.createThreadAction: INSERT:", err)
@@ -87,7 +87,7 @@ func createThreadAction(w http.ResponseWriter, in createThreadInput, db *sql.DB)
 		return
 	}
 	if err != nil && dbutil.IsErrorAboutDublicate(err) {
-		sqlQuery := "SELECT id, title, author, \"message\", createdAt, slug, forumSlug, createdAt FROM threads WHERE slug = $1"
+		sqlQuery := "SELECT id, title, author, \"message\", createdAt, slug, forumSlug, createdAt FROM threads WHERE slug = $1::CITEXT"
 		err := db.QueryRow(sqlQuery, in.ThreadSlug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.Message, &out.CreatedDateStr, &out.Slug, &out.ForumSlug, &out.CreatedDateStr)
 
 		if err != nil {
