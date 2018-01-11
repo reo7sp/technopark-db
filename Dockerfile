@@ -22,7 +22,13 @@ RUN /etc/init.d/postgresql start && \
     createdb -E UTF8 -T template0 -O technopark technopark && \
     /etc/init.d/postgresql stop
 RUN ln -s /var/run/postgresql/10-main.pid /var/run/postgresql/.s.PGSQL.5432
-RUN echo "local all all md5" > /etc/postgresql/10/main/pg_hba.conf
+RUN echo "local all all trust" > /etc/postgresql/10/main/pg_hba.conf
+RUN echo "host all all 0.0.0.0/0 trust" >> /etc/postgresql/10/main/pg_hba.conf
+RUN echo "listen_addresses='*'" >> /etc/postgresql/10/main/postgresql.conf
+RUN echo "autovacuum = off" >> /etc/postgresql/10/main/postgresql.conf
+RUN echo "fsync = off" >> /etc/postgresql/10/main/postgresql.conf
+RUN echo "full_page_writes = off" >> /etc/postgresql/10/main/postgresql.conf
+RUN echo "synchronous_commit = off" >> /etc/postgresql/10/main/postgresql.conf
 
 USER root
 WORKDIR /go/src/github.com/reo7sp/technopark-db

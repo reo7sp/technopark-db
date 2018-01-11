@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	runtime.GOMAXPROCS(8)
 
 	db, err := dbutil.Connect()
 	if err != nil {
