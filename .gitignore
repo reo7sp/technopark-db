@@ -68,3 +68,5 @@ fabric.properties
 
 /.idea/
 /report.html
+/db.html
+/tech-db-forum.dat.gz

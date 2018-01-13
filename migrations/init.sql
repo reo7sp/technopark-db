@@ -60,6 +60,8 @@ CREATE TABLE IF NOT EXISTS forumUsers (
 
 CREATE INDEX IF NOT EXISTS idx_users_nickname
   ON users (nickname);
+CREATE INDEX IF NOT EXISTS idx_users_nickname_desc
+  ON users (nickname DESC);
 CREATE INDEX IF NOT EXISTS idx_users_email
   ON users (email);
 
@@ -72,6 +74,8 @@ CREATE INDEX IF NOT EXISTS idx_threads_slug
   ON threads (slug);
 CREATE INDEX IF NOT EXISTS idx_threads_forumSlugCreatedAt
   ON threads (forumSlug, createdAt);
+CREATE INDEX IF NOT EXISTS idx_threads_forumSlugCreatedAt_desc
+  ON threads (forumSlug, createdAt DESC);
 
 CREATE INDEX IF NOT EXISTS idx_posts_id
   ON posts (id);
@@ -81,10 +85,14 @@ CREATE INDEX IF NOT EXISTS idx_posts_threadSlug
   ON posts (threadSlug);
 CREATE INDEX IF NOT EXISTS idx_posts_pathId
   ON posts (path, id);
+CREATE INDEX IF NOT EXISTS idx_posts_pathId_desc
+  ON posts (path DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_rootPostNo
   ON posts (rootPostNo);
 CREATE INDEX IF NOT EXISTS idx_posts_createdAtId
   ON posts (createdAt, id);
+CREATE INDEX IF NOT EXISTS idx_posts_createdAtId_desc
+  ON posts (createdAt DESC, id DESC);
 
 CREATE INDEX IF NOT EXISTS idx_votes_nicknameThreadId
   ON votes (nickname, threadId);
