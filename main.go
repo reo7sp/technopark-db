@@ -17,6 +17,8 @@ import (
 func main() {
 	runtime.GOMAXPROCS(8)
 
+	dbutil.SubscribeKillPostgresOnInterupt()
+
 	db, err := dbutil.Connect()
 	if err != nil {
 		log.Fatal(err)

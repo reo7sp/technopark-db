@@ -40,6 +40,7 @@ ENV PGHOST /var/run/postgresql
 ENV PGDATABASE technopark
 ENV PGUSER technopark
 ENV PGPASSWORD technopark
+ENV KILL_POSTGRES 1
 EXPOSE 5000
 CMD /etc/init.d/postgresql start && \
     sleep 10 && \
