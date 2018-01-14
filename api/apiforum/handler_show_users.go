@@ -97,9 +97,9 @@ func showUsersAction(w http.ResponseWriter, in showUsersInput, db *pgx.ConnPool)
 	JOIN forumUsers fu ON (fu.nickname = u.nickname)
 	WHERE fu.forumSlug = $1::citext
 	AND (
-		CASE WHEN $2 != ''
+		CASE WHEN $2::citext != ''
 		THEN (
-			CASE WHEN $3 = TRUE
+			CASE WHEN $3::boolean = TRUE
 			THEN u.nickname < $2::citext
 			ELSE u.nickname > $2::citext
 			END

@@ -65,9 +65,9 @@ func createThreadAction(w http.ResponseWriter, in createThreadInput, db *pgx.Con
 		return
 	}
 	if err != nil && dbutil.IsErrorAboutDublicate(err) {
-		sqlQuery := "SELECT id, title, author::text, \"message\", createdAt, slug::text, forumSlug::text FROM threads WHERE slug = $1::citext"
+		sqlQuery := "SELECT id, title, author::text, \"message\", createdAt, slug::text, forumSlug::text, votesCount FROM threads WHERE slug = $1::citext"
 		var t time.Time
-		err := db.QueryRow(sqlQuery, in.ThreadSlug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.Message, &t, &out.Slug, &out.ForumSlug)
+		err := db.QueryRow(sqlQuery, in.ThreadSlug).Scan(&out.Id, &out.Title, &out.AuthorNickname, &out.Message, &t, &out.Slug, &out.ForumSlug, &out.VotesCount)
 		out.CreatedDateStr = t.UTC().Format(api.TIMEFORMAT)
 
 		if err != nil {

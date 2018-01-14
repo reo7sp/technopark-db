@@ -56,7 +56,7 @@ func createForumAction(w http.ResponseWriter, in createForumInput, db *pgx.ConnP
 
 	var out createForumOutput
 
-	sqlQuery := "INSERT INTO forums (title, \"user\", slug) VALUES ($1, $2, $3)"
+	sqlQuery := "INSERT INTO forums (title, \"user\", slug) VALUES ($1::text, $2::citext, $3::citext)"
 	_, err = db.Exec(sqlQuery, in.Title, forumInfo.Nickname, in.Slug)
 
 	if err != nil && dbutil.IsErrorAboutDublicate(err) {

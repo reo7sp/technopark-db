@@ -102,10 +102,10 @@ func showPostAction(w http.ResponseWriter, in showPostInput, db *pgx.ConnPool) {
 	var t2 time.Time
 	if in.NeedThread {
 		sqlJoins += " JOIN threads t ON (t.id = p.threadId)"
-		sqlFields += ", t.id, t.title, t.author::text, t.forumSlug::text, t.message, t.createdAt, t.slug::text"
+		sqlFields += ", t.id, t.title, t.author::text, t.forumSlug::text, t.message, t.createdAt, t.slug::text, t.votesCount"
 		sqlScans = append(sqlScans,
 			&outBuilder.Thread.Id, &outBuilder.Thread.Title, &outBuilder.Thread.AuthorNickname, &outBuilder.Thread.ForumSlug,
-			&outBuilder.Thread.Message, &t2, &outBuilder.Thread.Slug)
+			&outBuilder.Thread.Message, &t2, &outBuilder.Thread.Slug, &outBuilder.Thread.VotesCount)
 	}
 
 	sqlQuery := "SELECT " + sqlFields + " FROM posts p " + sqlJoins + " WHERE p.id = $1"

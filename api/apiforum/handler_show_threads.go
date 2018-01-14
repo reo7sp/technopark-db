@@ -86,7 +86,7 @@ func showThreadsAction(w http.ResponseWriter, in showThreadsInput, db *pgx.ConnP
 	}
 	if in.Limit != -1 {
 		sqlFields = append(sqlFields, in.Limit)
-		sqlQuery += " LIMIT $" + strconv.FormatInt(int64(len(sqlFields)), 10)
+		sqlQuery += " LIMIT $" + strconv.FormatInt(int64(len(sqlFields)), 10) + "::integer"
 	}
 
 	rows, err := db.Query(sqlQuery, sqlFields...)

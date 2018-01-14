@@ -21,16 +21,22 @@ RUN /etc/init.d/postgresql start && \
     psql --command "CREATE USER technopark WITH SUPERUSER PASSWORD 'technopark';" && \
     createdb -E UTF8 -T template0 -O technopark technopark && \
     /etc/init.d/postgresql stop
+USER root
+
 RUN ln -s /var/run/postgresql/10-main.pid /var/run/postgresql/.s.PGSQL.5432
 RUN echo "local all all trust" > /etc/postgresql/10/main/pg_hba.conf
 RUN echo "host all all 0.0.0.0/0 trust" >> /etc/postgresql/10/main/pg_hba.conf
 RUN echo "listen_addresses='*'" >> /etc/postgresql/10/main/postgresql.conf
-RUN echo "autovacuum = off" >> /etc/postgresql/10/main/postgresql.conf
+
+RUN echo "synchronous_commit = off" >> /etc/postgresql/10/main/postgresql.conf
 RUN echo "fsync = off" >> /etc/postgresql/10/main/postgresql.conf
 RUN echo "full_page_writes = off" >> /etc/postgresql/10/main/postgresql.conf
-RUN echo "synchronous_commit = off" >> /etc/postgresql/10/main/postgresql.conf
 
-USER root
+RUN echo "max_wal_size = 1GB" >> /etc/postgresql/10/main/postgresql.conf
+RUN echo "shared_buffers = 128MB" >> /etc/postgresql/10/main/postgresql.conf
+RUN echo "effective_cache_size = 256MB" >> /etc/postgresql/10/main/postgresql.conf
+RUN echo "work_mem = 64MB" >> /etc/postgresql/10/main/postgresql.conf
+
 WORKDIR /go/src/github.com/reo7sp/technopark-db
 COPY . .
 RUN go get ./...
