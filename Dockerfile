@@ -2,12 +2,13 @@ FROM ubuntu:17.04
 
 RUN \
     apt-get update -q && \
-    apt-get install -q -y wget && \
+    apt-get install -q -y wget software-properties-common python-software-properties && \
     wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
     echo "deb http://apt.postgresql.org/pub/repos/apt/ zesty-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+    add-apt-repository ppa:gophers/archive &&\
     \
     apt-get update -q && \
-    apt-get install -q -y git golang-go postgresql-10 postgresql-contrib-10
+    apt-get install -q -y git golang-1.9-go postgresql-10 postgresql-contrib-10
 
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
