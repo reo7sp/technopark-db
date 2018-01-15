@@ -1,19 +1,20 @@
 package apithread
 
 import (
-	"net/http"
-	"github.com/reo7sp/technopark-db/apiutil"
-	"log"
-	"github.com/reo7sp/technopark-db/api"
-	"strconv"
 	"fmt"
-	"github.com/reo7sp/technopark-db/dbutil"
 	"github.com/jackc/pgx"
-	"time"
+	"github.com/patrickmn/go-cache"
+	"github.com/reo7sp/technopark-db/api"
+	"github.com/reo7sp/technopark-db/apiutil"
+	"github.com/reo7sp/technopark-db/dbutil"
+	"log"
+	"net/http"
+	"strconv"
 	"strings"
+	"time"
 )
 
-func MakeCreatePostHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeCreatePostHandler(db *pgx.ConnPool, cc *cache.Cache) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := createPostRead(r, ps)
 		if err != nil {
@@ -21,7 +22,7 @@ func MakeCreatePostHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Req
 			return
 		}
 
-		createPostAction(w, in, db)
+		createPostAction(w, in, db, cc)
 	}
 	return f
 }
@@ -106,7 +107,7 @@ func createPostGenerateNextPlaceholder(i *int64) string {
 	return "$" + strconv.FormatInt(*i, 10)
 }
 
-func createPostAction(w http.ResponseWriter, in createPostInput, db *pgx.ConnPool) {
+func createPostAction(w http.ResponseWriter, in createPostInput, db *pgx.ConnPool, cc *cache.Cache) {
 	out := make(createPostOutput, 0, len(in.Posts))
 
 	if len(in.Posts) == 0 {
@@ -139,7 +140,7 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *pgx.ConnPoo
 	sqlQuery := "INSERT INTO posts (parent, author, \"message\", forumSlug, threadId, threadSlug) VALUES"
 	sqlValues := make([]interface{}, 0, 5*len(in.Posts))
 	sqlValues = append(sqlValues, in.HasId, in.Id, in.Slug)
-	placeholderIndex := int64(0+3)
+	placeholderIndex := int64(0 + 3)
 	for i, post := range in.Posts {
 		sqlQuery += fmt.Sprintf(` (
 			%s,
@@ -211,6 +212,8 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *pgx.ConnPoo
 			return
 		}
 	}
+
+	cc.IncrementInt64("posts_count", int64(len(in.Posts)))
 
 	apiutil.WriteJsonObject(w, out, 201)
 }

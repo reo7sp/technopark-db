@@ -1,15 +1,16 @@
 package apiuser
 
 import (
+	"github.com/jackc/pgx"
+	"github.com/patrickmn/go-cache"
 	"github.com/reo7sp/technopark-db/api"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
 	"log"
 	"net/http"
-	"github.com/jackc/pgx"
 )
 
-func MakeCreateUserHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeCreateUserHandler(db *pgx.ConnPool, cc *cache.Cache) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := createUserRead(r, ps)
 		if err != nil {
@@ -17,7 +18,7 @@ func MakeCreateUserHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Req
 			return
 		}
 
-		createUserAction(w, in, db)
+		createUserAction(w, in, db, cc)
 	}
 	return f
 }
@@ -40,7 +41,7 @@ func createUserRead(r *http.Request, ps map[string]string) (in createUserInput, 
 	return
 }
 
-func createUserAction(w http.ResponseWriter, in createUserInput, db *pgx.ConnPool) {
+func createUserAction(w http.ResponseWriter, in createUserInput, db *pgx.ConnPool, cc *cache.Cache) {
 	var out createUserOutput
 
 	sqlQuery := "INSERT INTO users (nickname, fullname, about, email) VALUES ($1, $2, $3, $4)"
@@ -80,6 +81,8 @@ func createUserAction(w http.ResponseWriter, in createUserInput, db *pgx.ConnPoo
 		w.WriteHeader(500)
 		return
 	}
+
+	cc.IncrementInt64("users_count", 1)
 
 	out.Nickname = in.Nickname
 	out.Fullname = in.Fullname

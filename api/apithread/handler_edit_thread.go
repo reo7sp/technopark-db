@@ -1,12 +1,12 @@
 package apithread
 
 import (
+	"github.com/jackc/pgx"
 	"github.com/reo7sp/technopark-db/api"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
 	"log"
 	"net/http"
-	"github.com/jackc/pgx"
 	"time"
 )
 

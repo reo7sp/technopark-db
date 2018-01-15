@@ -1,15 +1,16 @@
 package apiforum
 
 import (
+	"github.com/jackc/pgx"
+	"github.com/patrickmn/go-cache"
 	"github.com/reo7sp/technopark-db/api"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
 	"log"
 	"net/http"
-	"github.com/jackc/pgx"
 )
 
-func MakeCreateForumHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeCreateForumHandler(db *pgx.ConnPool, cc *cache.Cache) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := createForumRead(r, ps)
 		if err != nil {
@@ -17,7 +18,7 @@ func MakeCreateForumHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Re
 			return
 		}
 
-		createForumAction(w, in, db)
+		createForumAction(w, in, db, cc)
 	}
 	return f
 }
@@ -45,7 +46,7 @@ func createForumGetUser(in createForumInput, db *pgx.ConnPool) (r createForumGet
 	return
 }
 
-func createForumAction(w http.ResponseWriter, in createForumInput, db *pgx.ConnPool) {
+func createForumAction(w http.ResponseWriter, in createForumInput, db *pgx.ConnPool, cc *cache.Cache) {
 	forumInfo, err := createForumGetUser(in, db)
 
 	if err != nil && dbutil.IsErrorAboutNotFound(err) {
@@ -77,6 +78,8 @@ func createForumAction(w http.ResponseWriter, in createForumInput, db *pgx.ConnP
 		w.WriteHeader(500)
 		return
 	}
+
+	cc.IncrementInt64("forums_count", 1)
 
 	out.Slug = in.Slug
 	out.Title = in.Title

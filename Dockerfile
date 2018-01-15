@@ -32,7 +32,6 @@ RUN echo "synchronous_commit = off" >> /etc/postgresql/10/main/postgresql.conf
 RUN echo "fsync = off" >> /etc/postgresql/10/main/postgresql.conf
 RUN echo "full_page_writes = off" >> /etc/postgresql/10/main/postgresql.conf
 
-RUN echo "max_wal_size = 1GB" >> /etc/postgresql/10/main/postgresql.conf
 RUN echo "shared_buffers = 128MB" >> /etc/postgresql/10/main/postgresql.conf
 RUN echo "effective_cache_size = 256MB" >> /etc/postgresql/10/main/postgresql.conf
 RUN echo "work_mem = 64MB" >> /etc/postgresql/10/main/postgresql.conf
@@ -47,6 +46,7 @@ ENV PGDATABASE technopark
 ENV PGUSER technopark
 ENV PGPASSWORD technopark
 ENV KILL_POSTGRES 1
+ENV DEBUG 0
 EXPOSE 5000
 CMD /etc/init.d/postgresql start && \
     sleep 10 && \

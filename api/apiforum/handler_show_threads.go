@@ -1,12 +1,12 @@
 package apiforum
 
 import (
+	"github.com/jackc/pgx"
 	"github.com/reo7sp/technopark-db/api"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"log"
 	"net/http"
 	"strconv"
-	"github.com/jackc/pgx"
 	"time"
 )
 
@@ -86,7 +86,7 @@ func showThreadsAction(w http.ResponseWriter, in showThreadsInput, db *pgx.ConnP
 	}
 	if in.Limit != -1 {
 		sqlFields = append(sqlFields, in.Limit)
-		sqlQuery += " LIMIT $" + strconv.FormatInt(int64(len(sqlFields)), 10) + "::integer"
+		sqlQuery += " LIMIT $" + strconv.FormatInt(int64(len(sqlFields)), 10) + "::bigint"
 	}
 
 	rows, err := db.Query(sqlQuery, sqlFields...)

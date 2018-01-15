@@ -1,8 +1,8 @@
 package dbutil
 
 import (
-	"io/ioutil"
 	"github.com/jackc/pgx"
+	"io/ioutil"
 )
 
 func Connect() (*pgx.ConnPool, error) {

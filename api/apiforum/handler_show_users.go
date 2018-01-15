@@ -2,13 +2,13 @@ package apiforum
 
 import (
 	"fmt"
+	"github.com/jackc/pgx"
 	"github.com/reo7sp/technopark-db/api"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
 	"log"
 	"net/http"
 	"strconv"
-	"github.com/jackc/pgx"
 )
 
 func MakeShowUsersHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
@@ -50,7 +50,7 @@ func showUsersRead(r *http.Request, ps map[string]string) (in showUsersInput, er
 		in.Limit = 0
 		in.LimitSql = ""
 	} else {
-		in.LimitSql = "LIMIT " + strconv.FormatInt(in.Limit, 10)
+		in.LimitSql = "LIMIT " + strconv.FormatInt(in.Limit, 10) + "::bigint"
 	}
 	in.Since = query.Get("since")
 	in.IsDesc = query.Get("desc") == "true"

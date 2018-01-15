@@ -2,13 +2,13 @@ package apithread
 
 import (
 	"fmt"
+	"github.com/jackc/pgx"
 	"github.com/reo7sp/technopark-db/api"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
 	"log"
 	"net/http"
 	"strconv"
-	"github.com/jackc/pgx"
 	"time"
 )
 
@@ -134,7 +134,7 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *pgx.ConnPool)
 			END
 		)
 		ORDER BY createdAt %s, id %s
-		LIMIT $5
+		LIMIT $5::bigint
 
 		`, in.Order, in.Order)
 
@@ -162,7 +162,7 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *pgx.ConnPool)
 			END
 		)
 		ORDER BY path %s, id %s
-		LIMIT $5
+		LIMIT $5::bigint
 
 		`, in.Order, in.Order)
 
@@ -192,24 +192,24 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *pgx.ConnPool)
 		AND (
 			CASE WHEN $6 = TRUE
 			THEN
-				rootPostNo >
+				rootPostNo >=
 					(
-						SELECT t.rootPostsCount FROM threads t
-						WHERE (
-							CASE WHEN $1 = TRUE
-							THEN (t.id = $2)
-							ELSE (t.slug = $3::citext)
-							END
-						)
-					)
-					- 1
-					- $5
-					- (
 						CASE WHEN $4 != -1
-						THEN (SELECT p1.rootPostNo FROM posts p1 WHERE p1.id = $4)
-						ELSE 0
+						THEN (
+							SELECT p1.rootPostNo FROM posts p1 WHERE p1.id = $4
+						)
+						ELSE (
+							SELECT t.rootPostsCount FROM threads t
+							WHERE (
+								CASE WHEN $1 = TRUE
+								THEN (t.id = $2)
+								ELSE (t.slug = $3::citext)
+								END
+							)
+						)
 						END
 					)
+					- $5
 			ELSE
 				rootPostNo <
 					$5

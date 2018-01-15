@@ -1,24 +1,16 @@
 package dbutil
 
 import (
-	"os"
-	"os/signal"
-	"fmt"
+	"log"
 	"os/exec"
 )
 
-func SubscribeKillPostgresOnInterupt() {
-	if os.Getenv("KILL_POSTGRES") != "1" {
+func KillPostgres() {
+	cmd := "kill -9 $(pgrep postgres)"
+	out, err := exec.Command("bash", "-c", cmd).Output()
+	if err != nil {
+		log.Println("error: kill postgres: cannot execute kill command:", err)
 		return
 	}
-	fmt.Println("warning: will kill postgres on interrupt")
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func(){
-		for range c {
-			cmd := "kill -9 $(pgrep postgres)"
-			exec.Command("sh","-c", cmd).Output()
-		}
-	}()
+	log.Println("info: kill postgres: out:", out)
 }

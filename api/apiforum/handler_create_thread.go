@@ -2,16 +2,17 @@ package apiforum
 
 import (
 	"errors"
+	"github.com/jackc/pgx"
+	"github.com/patrickmn/go-cache"
 	"github.com/reo7sp/technopark-db/api"
 	"github.com/reo7sp/technopark-db/apiutil"
 	"github.com/reo7sp/technopark-db/dbutil"
 	"log"
 	"net/http"
 	"time"
-	"github.com/jackc/pgx"
 )
 
-func MakeCreateThreadHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.Request, map[string]string) {
+func MakeCreateThreadHandler(db *pgx.ConnPool, cc *cache.Cache) func(http.ResponseWriter, *http.Request, map[string]string) {
 	f := func(w http.ResponseWriter, r *http.Request, ps map[string]string) {
 		in, err := createThreadRead(r, ps)
 		if err != nil {
@@ -19,7 +20,7 @@ func MakeCreateThreadHandler(db *pgx.ConnPool) func(http.ResponseWriter, *http.R
 			return
 		}
 
-		createThreadAction(w, in, db)
+		createThreadAction(w, in, db, cc)
 	}
 	return f
 }
@@ -49,7 +50,7 @@ func createThreadRead(r *http.Request, ps map[string]string) (in createThreadInp
 	return
 }
 
-func createThreadAction(w http.ResponseWriter, in createThreadInput, db *pgx.ConnPool) {
+func createThreadAction(w http.ResponseWriter, in createThreadInput, db *pgx.ConnPool, cc *cache.Cache) {
 	var out createThreadOutput
 
 	if in.CreatedAtStr == "" {
@@ -84,6 +85,8 @@ func createThreadAction(w http.ResponseWriter, in createThreadInput, db *pgx.Con
 		w.WriteHeader(500)
 		return
 	}
+
+	cc.IncrementInt64("threads_count", 1)
 
 	out.Title = in.Title
 	out.AuthorNickname = in.Author
