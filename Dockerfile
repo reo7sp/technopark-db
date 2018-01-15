@@ -1,15 +1,20 @@
 FROM ubuntu:17.04
 
+ENV DEBIAN_FRONTEND noninteractive
+
 RUN \
     apt-get update -q && \
-    apt-get install -q -y wget software-properties-common python-software-properties && \
+    apt-get install -q -y wget && \
     wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
     echo "deb http://apt.postgresql.org/pub/repos/apt/ zesty-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
-    add-apt-repository ppa:gophers/archive &&\
+    wget https://dl.google.com/go/go1.9.2.linux-amd64.tar.gz && \
+    tar -xvf go1.9.2.linux-amd64.tar.gz &&\
+    mv go /usr/local/ && \
     \
     apt-get update -q && \
-    apt-get install -q -y git golang-1.9-go postgresql-10 postgresql-contrib-10
+    apt-get install -q -y git postgresql-10 postgresql-contrib-10
 
+ENV GOROOT /usr/local/go
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 RUN mkdir -p "$GOPATH/src" "$GOPATH/bin"
@@ -52,3 +57,4 @@ EXPOSE 5000
 CMD /etc/init.d/postgresql start && \
     sleep 10 && \
     ./technopark-db
+    
