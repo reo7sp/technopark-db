@@ -37,9 +37,10 @@ RUN echo "listen_addresses='*'" >> /etc/postgresql/10/main/postgresql.conf
 RUN echo "synchronous_commit = off" >> /etc/postgresql/10/main/postgresql.conf
 RUN echo "fsync = off" >> /etc/postgresql/10/main/postgresql.conf
 RUN echo "full_page_writes = off" >> /etc/postgresql/10/main/postgresql.conf
+RUN echo "autovacuum = off" >> /etc/postgresql/10/main/postgresql.conf
 
-RUN echo "shared_buffers = 256MB" >> /etc/postgresql/10/main/postgresql.conf
-RUN echo "effective_cache_size = 640MB" >> /etc/postgresql/10/main/postgresql.conf
+RUN echo "shared_buffers = 512MB" >> /etc/postgresql/10/main/postgresql.conf
+RUN echo "effective_cache_size = 512MB" >> /etc/postgresql/10/main/postgresql.conf
 RUN echo "work_mem = 64MB" >> /etc/postgresql/10/main/postgresql.conf
 
 WORKDIR /go/src/github.com/reo7sp/technopark-db
