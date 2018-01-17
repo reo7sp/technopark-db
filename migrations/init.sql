@@ -58,6 +58,9 @@ CREATE TABLE IF NOT EXISTS forumUsers (
 
 -- indexes
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_nickname_desc
+  ON users (nickname DESC);
+
 CREATE INDEX IF NOT EXISTS idx_threads_forumSlug_createdAt_asc
   ON threads (forumSlug, createdAt ASC);
 CREATE INDEX IF NOT EXISTS idx_threads_forumSlug_createdAt_desc

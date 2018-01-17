@@ -99,7 +99,7 @@ func showUsersAction(w http.ResponseWriter, in showUsersInput, db *pgx.ConnPool)
 	AND (
 		CASE WHEN $2::citext != ''
 		THEN (
-			CASE WHEN $3::boolean = TRUE
+			CASE WHEN $3::boolean IS TRUE
 			THEN u.nickname < $2::citext
 			ELSE u.nickname > $2::citext
 			END
