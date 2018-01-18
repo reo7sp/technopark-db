@@ -50,8 +50,8 @@ CREATE TABLE IF NOT EXISTS votes (
 );
 
 CREATE TABLE IF NOT EXISTS forumUsers (
-  nickname  CITEXT NOT NULL REFERENCES users (nickname),
-  forumSlug CITEXT NOT NULL REFERENCES forums (slug),
+  nickname  CITEXT COLLATE ucs_basic NOT NULL REFERENCES users (nickname),
+  forumSlug CITEXT                   NOT NULL REFERENCES forums (slug),
   PRIMARY KEY (nickname, forumSlug)
 );
 
