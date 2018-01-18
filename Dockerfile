@@ -1,4 +1,4 @@
-FROM ubuntu:17.04
+FROM ubuntu:16.04
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -6,7 +6,7 @@ RUN \
     apt-get update -q && \
     apt-get install -q -y wget && \
     wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
-    echo "deb http://apt.postgresql.org/pub/repos/apt/ zesty-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+    echo "deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
     wget https://dl.google.com/go/go1.9.2.linux-amd64.tar.gz && \
     tar -xvf go1.9.2.linux-amd64.tar.gz &&\
     mv go /usr/local/ && \
