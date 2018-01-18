@@ -57,7 +57,7 @@ func createThreadAction(w http.ResponseWriter, in createThreadInput, db *pgx.Con
 		in.CreatedAtStr = time.Now().Format(time.RFC3339)
 	}
 
-	sqlQuery := "INSERT INTO threads (slug, title, author, forumSlug, \"message\", createdAt) VALUES ($1::citext, $2, $3, (SELECT slug FROM forums WHERE slug = $4::citext), $5, $6) RETURNING id, forumSlug::text"
+	sqlQuery := "INSERT INTO threads (slug, title, author, forumSlug, \"message\", createdAt) VALUES ($1::citext, $2, $3::citext, (SELECT slug FROM forums WHERE slug = $4::citext), $5, $6) RETURNING id, forumSlug::text"
 	err := db.QueryRow(sqlQuery, in.ThreadSlug, in.Title, in.Author, in.ForumSlug, in.Message, in.CreatedAtStr).Scan(&out.Id, &out.ForumSlug)
 
 	if err != nil && dbutil.IsErrorAboutFailedForeignKey(err) {

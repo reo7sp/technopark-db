@@ -138,8 +138,8 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *pgx.ConnPoo
 	}
 
 	sqlQuery := "INSERT INTO posts (parent, author, \"message\", forumSlug, threadId) VALUES"
-	sqlValues := make([]interface{}, 0, 5*len(in.Posts))
-	sqlValues = append(sqlValues, in.HasId, in.Id)
+	sqlValues := make([]interface{}, 0, 3+3*len(in.Posts))
+	sqlValues = append(sqlValues, in.HasId, in.Id, in.Slug)
 	placeholderIndex := int64(0 + 3)
 	for i, post := range in.Posts {
 		sqlQuery += fmt.Sprintf(` (

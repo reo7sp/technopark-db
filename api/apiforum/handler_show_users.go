@@ -113,8 +113,8 @@ func showUsersAction(w http.ResponseWriter, in showUsersInput, db *pgx.ConnPool)
 	)
 	SELECT u.nickname::text, u.fullname, u.email::text, u.about FROM thisForumUsers tfu
 	JOIN users u ON (u.nickname = tfu.nickname)
-
-	`, in.Order, in.LimitSql)
+	ORDER BY u.nickname %s
+	`, in.Order, in.LimitSql, in.Order)
 
 	rows, err := db.Query(sqlQuery, in.Slug, in.Since, in.IsDesc)
 	if err != nil {

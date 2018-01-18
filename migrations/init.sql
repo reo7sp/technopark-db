@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS posts (
   forumSlug  CITEXT                   NOT NULL REFERENCES forums (slug),
   threadId   INTEGER                  NOT NULL REFERENCES threads (id),
   createdAt  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  path       BIGINT []                NOT NULL DEFAULT ARRAY [] :: BIGINT [],
+  path       BIGINT [],
   rootPostNo BIGINT
 );
 
