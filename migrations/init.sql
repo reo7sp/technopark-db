@@ -37,7 +37,6 @@ CREATE TABLE IF NOT EXISTS posts (
   isEdited   BOOLEAN                  NOT NULL DEFAULT FALSE,
   forumSlug  CITEXT                   NOT NULL REFERENCES forums (slug),
   threadId   INTEGER                  NOT NULL REFERENCES threads (id),
-  threadSlug CITEXT REFERENCES threads (slug),
   createdAt  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   path       BIGINT []                NOT NULL DEFAULT ARRAY [] :: BIGINT [],
   rootPostNo BIGINT
@@ -66,22 +65,25 @@ CREATE INDEX IF NOT EXISTS idx_threads_forumSlug_createdAt_asc
 CREATE INDEX IF NOT EXISTS idx_threads_forumSlug_createdAt_desc
   ON threads (forumSlug, createdAt DESC);
 
-CREATE INDEX IF NOT EXISTS idx_posts_threadId
-  ON posts (threadId);
-CREATE INDEX IF NOT EXISTS idx_posts_threadSlug
-  ON posts (threadSlug)
-  WHERE posts.threadSlug IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_threadId_id
+  ON posts (threadId, id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_createdAt_id_asc
   ON posts (createdAt ASC, id ASC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_createdAt_id_desc
   ON posts (createdAt DESC, id DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_threadId_path
+  ON posts (threadId, path);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_threadId_path_rootPostNo
+  ON posts (threadId, path, rootPostNo);
+CREATE INDEX IF NOT EXISTS idx_posts_threadId_path_rootPostNo
+  ON posts (threadId, rootPostNo);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_path_id_asc
   ON posts (path ASC, id ASC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_path_id_desc
   ON posts (path DESC, id DESC);
 
-CREATE INDEX IF NOT EXISTS idx_forumUsers_forumSlug
-  ON forumUsers (forumSlug);
+CREATE INDEX IF NOT EXISTS idx_forumUsers_forumSlug_nickname
+  ON forumUsers (forumSlug, nickname);
 
 -- triggers
 

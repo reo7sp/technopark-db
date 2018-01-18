@@ -137,9 +137,9 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *pgx.ConnPoo
 		return
 	}
 
-	sqlQuery := "INSERT INTO posts (parent, author, \"message\", forumSlug, threadId, threadSlug) VALUES"
+	sqlQuery := "INSERT INTO posts (parent, author, \"message\", forumSlug, threadId) VALUES"
 	sqlValues := make([]interface{}, 0, 5*len(in.Posts))
-	sqlValues = append(sqlValues, in.HasId, in.Id, in.Slug)
+	sqlValues = append(sqlValues, in.HasId, in.Id)
 	placeholderIndex := int64(0 + 3)
 	for i, post := range in.Posts {
 		sqlQuery += fmt.Sprintf(` (
@@ -147,8 +147,7 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *pgx.ConnPoo
 			%s,
 			%s,
 			(SELECT forumSlug FROM threads WHERE (CASE WHEN $1 IS TRUE THEN id = $2 ELSE slug = $3::citext END)),
-			(CASE WHEN $1 IS TRUE THEN $2 ELSE (SELECT id FROM threads WHERE slug = $3::citext) END),
-			(CASE WHEN $1 IS TRUE THEN (SELECT slug FROM threads WHERE id = $2) ELSE $3::citext END)
+			(CASE WHEN $1 IS TRUE THEN $2 ELSE (SELECT id FROM threads WHERE slug = $3::citext) END)
 		)`, createPostGenerateNextPlaceholder(&placeholderIndex),
 			createPostGenerateNextPlaceholder(&placeholderIndex),
 			createPostGenerateNextPlaceholder(&placeholderIndex))

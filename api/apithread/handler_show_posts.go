@@ -116,10 +116,10 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *pgx.ConnPool)
 		sqlQuery = fmt.Sprintf(`
 
 		SELECT id, parent, author::text, "message", isEdited, forumSlug::text, threadId, createdAt FROM posts
-		WHERE (
+		WHERE threadId = (
 			CASE WHEN $1 IS TRUE
-			THEN (threadId = $2)
-			ELSE (threadSlug = $3::citext)
+			THEN $2
+			ELSE (SELECT id FROM threads WHERE slug = $3::citext)
 			END
 		)
 		AND (
@@ -144,10 +144,10 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *pgx.ConnPool)
 		sqlQuery = fmt.Sprintf(`
 
 		SELECT id, parent, author::text, "message", isEdited, forumSlug::text, threadId, createdAt FROM posts
-		WHERE (
+		WHERE threadId = (
 			CASE WHEN $1 IS TRUE
-			THEN (threadId = $2)
-			ELSE (threadSlug = $3::citext)
+			THEN $2
+			ELSE (SELECT id FROM threads WHERE slug = $3::citext)
 			END
 		)
 		AND (
@@ -173,10 +173,10 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *pgx.ConnPool)
 
 		WITH sincePost AS (SELECT p1.path, p1.rootPostNo FROM posts p1 WHERE p1.id = $4)
 		SELECT id, parent, author::text, "message", isEdited, forumSlug::text, threadId, createdAt FROM posts
-		WHERE (
+		WHERE threadId = (
 			CASE WHEN $1 IS TRUE
-			THEN (threadId = $2)
-			ELSE (threadSlug = $3::citext)
+			THEN $2
+			ELSE (SELECT id FROM threads WHERE slug = $3::citext)
 			END
 		)
 		AND (

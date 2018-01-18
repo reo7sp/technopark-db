@@ -93,22 +93,26 @@ func showUsersAction(w http.ResponseWriter, in showUsersInput, db *pgx.ConnPool)
 
 	sqlQuery := fmt.Sprintf(`
 
-	SELECT u.nickname::text, u.fullname, u.email::text, u.about FROM users u
-	JOIN forumUsers fu ON (fu.nickname = u.nickname)
-	WHERE fu.forumSlug = $1::citext
-	AND (
-		CASE WHEN $2::citext != ''
-		THEN (
-			CASE WHEN $3::boolean IS TRUE
-			THEN u.nickname < $2::citext
-			ELSE u.nickname > $2::citext
+	WITH thisForumUsers AS (
+		SELECT fu.nickname
+		FROM forumUsers fu
+		WHERE fu.forumSlug = $1::citext
+		AND (
+			CASE WHEN $2::citext != ''
+			THEN (
+				CASE WHEN $3::boolean IS TRUE
+				THEN fu.nickname < $2::citext
+				ELSE fu.nickname > $2::citext
+				END
+			)
+			ELSE TRUE
 			END
 		)
-		ELSE TRUE
-		END
+		ORDER BY fu.nickname %s
+		%s
 	)
-	ORDER BY u.nickname %s
-	%s
+	SELECT u.nickname::text, u.fullname, u.email::text, u.about FROM thisForumUsers tfu
+	JOIN users u ON (u.nickname = tfu.nickname)
 
 	`, in.Order, in.LimitSql)
 
