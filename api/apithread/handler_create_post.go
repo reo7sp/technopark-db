@@ -214,11 +214,11 @@ func createPostAction(w http.ResponseWriter, in createPostInput, db *pgx.ConnPoo
 
 	cc.IncrementInt64("posts_count", int64(len(in.Posts)))
 
-	postsCount, ok := cc.Get("posts_count")
-	if postsCount.(int64) == 1500000 {
-		log.Println("info: apithread.createPostAction: run ANALYZE")
-		db.Exec("ANALYZE")
-	}
+	//postsCount, ok := cc.Get("posts_count")
+	//if postsCount.(int64) == 1500000 {
+	//	log.Println("info: apithread.createPostAction: run ANALYZE")
+	//	db.Exec("ANALYZE")
+	//}
 
 	apiutil.WriteJsonObject(w, out, 201)
 }
