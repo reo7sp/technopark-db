@@ -50,9 +50,9 @@ CREATE TABLE IF NOT EXISTS votes (
 );
 
 CREATE TABLE IF NOT EXISTS forumUsers (
-  nickname  CITEXT COLLATE ucs_basic NOT NULL REFERENCES users (nickname),
   forumSlug CITEXT                   NOT NULL REFERENCES forums (slug),
-  PRIMARY KEY (nickname, forumSlug)
+  nickname  CITEXT COLLATE ucs_basic NOT NULL REFERENCES users (nickname),
+  PRIMARY KEY (forumSlug, nickname)
 );
 
 -- indexes
@@ -67,23 +67,12 @@ CREATE INDEX IF NOT EXISTS idx_threads_forumSlug_createdAt_desc
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_threadId_id
   ON posts (threadId, id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_createdAt_id_asc
-  ON posts (createdAt ASC, id ASC);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_createdAt_id_desc
-  ON posts (createdAt DESC, id DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_threadId_path
   ON posts (threadId, path);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_threadId_path_rootPostNo
   ON posts (threadId, path, rootPostNo);
 CREATE INDEX IF NOT EXISTS idx_posts_threadId_path_rootPostNo
   ON posts (threadId, rootPostNo);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_path_id_asc
-  ON posts (path ASC, id ASC);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_path_id_desc
-  ON posts (path DESC, id DESC);
-
-CREATE INDEX IF NOT EXISTS idx_forumUsers_forumSlug_nickname
-  ON forumUsers (forumSlug, nickname);
 
 -- triggers
 
@@ -284,7 +273,7 @@ CREATE OR REPLACE FUNCTION func_posts_insertForumUser()
 AS $$
 BEGIN
 
-  INSERT INTO forumUsers (nickname, forumSlug) VALUES (NEW.author, NEW.forumSlug)
+  INSERT INTO forumUsers (forumSlug, nickname) VALUES (NEW.forumSlug, NEW.author)
   ON CONFLICT DO NOTHING;
 
   RETURN NULL;
@@ -306,7 +295,7 @@ CREATE OR REPLACE FUNCTION func_threads_insertForumUser()
 AS $$
 BEGIN
 
-  INSERT INTO forumUsers (nickname, forumSlug) VALUES (NEW.author, NEW.forumSlug)
+  INSERT INTO forumUsers (forumSlug, nickname) VALUES (NEW.forumSlug, NEW.author)
   ON CONFLICT DO NOTHING;
 
   RETURN NULL;
