@@ -18,15 +18,14 @@ CREATE TABLE IF NOT EXISTS forums (
 );
 
 CREATE TABLE IF NOT EXISTS threads (
-  id             BIGSERIAL                NOT NULL PRIMARY KEY,
-  title          VARCHAR(255)             NOT NULL,
-  author         CITEXT                   NOT NULL REFERENCES users (nickname),
-  forumSlug      CITEXT                   NOT NULL REFERENCES forums (slug),
-  slug           CITEXT UNIQUE,
-  votesCount     INTEGER                  NOT NULL DEFAULT 0,
-  "message"      TEXT                     NOT NULL,
-  createdAt      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  rootPostsCount BIGINT                   NOT NULL DEFAULT 0
+  id         BIGSERIAL                NOT NULL PRIMARY KEY,
+  title      VARCHAR(255)             NOT NULL,
+  author     CITEXT                   NOT NULL REFERENCES users (nickname),
+  forumSlug  CITEXT                   NOT NULL REFERENCES forums (slug),
+  slug       CITEXT UNIQUE,
+  votesCount INTEGER                  NOT NULL DEFAULT 0,
+  "message"  TEXT                     NOT NULL,
+  createdAt  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS posts (
@@ -35,11 +34,11 @@ CREATE TABLE IF NOT EXISTS posts (
   author     CITEXT                   NOT NULL REFERENCES users (nickname),
   "message"  TEXT                     NOT NULL,
   isEdited   BOOLEAN                  NOT NULL DEFAULT FALSE,
-  forumSlug  CITEXT                   NOT NULL REFERENCES forums (slug),
+  forumSlug  CITEXT                   NOT NULL,
   threadId   INTEGER                  NOT NULL REFERENCES threads (id),
   createdAt  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   path       BIGINT [],
-  rootPostNo BIGINT
+  rootParent BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS votes (
@@ -50,37 +49,31 @@ CREATE TABLE IF NOT EXISTS votes (
 );
 
 CREATE TABLE IF NOT EXISTS forumUsers (
-  forumSlug CITEXT                   NOT NULL REFERENCES forums (slug),
-  nickname  CITEXT COLLATE ucs_basic NOT NULL REFERENCES users (nickname),
+  forumSlug CITEXT                   NOT NULL,
+  nickname  CITEXT COLLATE ucs_basic NOT NULL,
   PRIMARY KEY (forumSlug, nickname)
 );
 
 -- indexes
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_nickname_desc
-  ON users (nickname DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_threads_slug_id
+  ON threads (slug, id);
+CREATE INDEX IF NOT EXISTS idx_threads_forumSlug_createdAt
+  ON threads (forumSlug, createdAt);
 
-CREATE INDEX IF NOT EXISTS idx_threads_forumSlug_createdAt_asc
-  ON threads (forumSlug, createdAt ASC);
-CREATE INDEX IF NOT EXISTS idx_threads_forumSlug_createdAt_desc
-  ON threads (forumSlug, createdAt DESC);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_threadId_id
-  ON posts (threadId, id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_createdAt_id_asc
-  ON posts (createdAt ASC, id ASC);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_createdAt_id_desc
-  ON posts (createdAt DESC, id DESC);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_threadId_path
-  ON posts (threadId, path);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_threadId_path_rootPostNo
-  ON posts (threadId, path, rootPostNo);
-CREATE INDEX IF NOT EXISTS idx_posts_threadId_path_rootPostNo
-  ON posts (threadId, rootPostNo);
--- CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_path_id_asc
-  -- ON posts (path ASC, id ASC);
--- CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_path_id_desc
-  -- ON posts (path DESC, id DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_threadId_createdAt_id_asc
+  ON posts (threadId, createdAt, id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_threadId_id_createdAt_id_asc
+  ON posts (threadId, id, createdAt, id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_id_path
+  ON posts (id, path);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_threadId_path_id
+  ON posts (threadId, path, id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_threadId_path_id_parentnull
+  ON posts (threadId, path, id)
+  WHERE parent IS NULL;
+CREATE INDEX IF NOT EXISTS idx_posts_rootParent
+  ON posts (rootParent);
 
 -- triggers
 
@@ -106,28 +99,6 @@ CREATE TRIGGER trig_posts_incrementForumPostsCount
   FOR EACH ROW
 EXECUTE PROCEDURE func_posts_incrementForumPostsCount();
 
--- CREATE OR REPLACE FUNCTION func_posts_decrementForumPostsCount()
---   RETURNS TRIGGER AS
--- $$
--- BEGIN
---
---   UPDATE forums
---   SET postsCount = (postsCount - 1)
---   WHERE slug = OLD.forumSlug;
---
---   RETURN NULL;
--- END;
--- $$ LANGUAGE plpgsql;
---
--- DROP TRIGGER IF EXISTS trig_posts_decrementForumPostsCount
--- ON posts;
---
--- CREATE TRIGGER trig_posts_decrementForumPostsCount
---   AFTER DELETE
---   ON posts
---   FOR EACH ROW
--- EXECUTE PROCEDURE func_posts_decrementForumPostsCount();
-
 
 CREATE OR REPLACE FUNCTION func_threads_incrementForumThreadsCount()
   RETURNS TRIGGER AS
@@ -151,67 +122,30 @@ CREATE TRIGGER trig_threads_incrementForumThreadsCount
   FOR EACH ROW
 EXECUTE PROCEDURE func_threads_incrementForumThreadsCount();
 
--- CREATE OR REPLACE FUNCTION func_threads_decrementForumThreadsCount()
---   RETURNS TRIGGER AS
--- $$
--- BEGIN
---
---   UPDATE forums
---   SET threadsCount = (threadsCount - 1)
---   WHERE slug = OLD.forumSlug;
---
---   RETURN NULL;
--- END;
--- $$ LANGUAGE plpgsql;
---
--- DROP TRIGGER IF EXISTS trig_threads_decrementForumThreadsCount
--- ON threads;
---
--- CREATE TRIGGER trig_threads_decrementForumThreadsCount
---   AFTER DELETE
---   ON threads
---   FOR EACH ROW
--- EXECUTE PROCEDURE func_threads_decrementForumThreadsCount();
-
 
 CREATE OR REPLACE FUNCTION func_posts_constructParentPath()
   RETURNS TRIGGER AS
 $$
-DECLARE
-  threadRootPostsCount BIGINT;
-  parentPath           BIGINT [];
 BEGIN
 
   IF NEW.parent IS NULL
   THEN
 
-    SELECT rootPostsCount
-    INTO threadRootPostsCount
-    FROM threads
-    WHERE threads.id = NEW.threadId;
-
-    UPDATE threads
-    SET rootPostsCount = threadRootPostsCount + 1
-    WHERE id = NEW.threadId;
-
     UPDATE posts
-    SET path = ARRAY [NEW.id], rootPostNo = threadRootPostsCount
+    SET path = ARRAY [NEW.id], rootParent = NEW.id
     WHERE id = NEW.id;
 
   ELSE
 
-    SELECT rootPostNo
-    INTO threadRootPostsCount
-    FROM posts
-    WHERE id = NEW.parent;
-
-    SELECT path
-    INTO parentPath
-    FROM posts
-    WHERE id = NEW.parent;
-
+    WITH parentPost AS (SELECT path
+                        FROM posts
+                        WHERE id = NEW.parent)
     UPDATE posts
-    SET path = array_append(parentPath, NEW.id), rootPostNo = threadRootPostsCount
+    SET
+      path       = array_append((SELECT path
+                                 FROM parentPost), NEW.id),
+      rootParent = (SELECT path [1]
+                    FROM parentPost)
     WHERE id = NEW.id;
 
   END IF;

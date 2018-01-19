@@ -171,60 +171,35 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *pgx.ConnPool)
 	case "parent_tree":
 		sqlQuery = fmt.Sprintf(`
 
-		WITH sincePost AS (SELECT p1.path, p1.rootPostNo FROM posts p1 WHERE p1.id = $4)
-		SELECT id, parent, author::text, "message", isEdited, forumSlug::text, threadId, createdAt FROM posts
-		WHERE threadId = (
-			CASE WHEN $1 IS TRUE
-			THEN $2
-			ELSE (SELECT id FROM threads WHERE slug = $3::citext)
-			END
-		)
-		AND (
-			CASE WHEN $4 != -1
-			THEN (
-				CASE WHEN $6 IS TRUE
-				THEN (path < (SELECT sincePost.path FROM sincePost))
-				ELSE (path > (SELECT sincePost.path FROM sincePost))
+		WITH rootParentPosts AS (
+			SELECT id FROM posts
+			WHERE threadId = (
+				CASE WHEN $1 IS TRUE
+				THEN $2
+				ELSE (SELECT id FROM threads WHERE slug = $3::citext)
 				END
 			)
-			ELSE TRUE
-			END
+			AND (
+				CASE WHEN $4 != -1
+				THEN (
+					CASE WHEN $6 IS TRUE
+					THEN (path < (SELECT path FROM posts p1 WHERE p1.id = $4))
+					ELSE (path > (SELECT path FROM posts p1 WHERE p1.id = $4))
+					END
+				)
+				ELSE TRUE
+				END
+			)
+			AND parent IS NULL
+			ORDER BY path %s, id %s
+			LIMIT $5
 		)
-		AND (
-			CASE WHEN $6 IS TRUE
-			THEN
-				rootPostNo >=
-					(
-						CASE WHEN $4 != -1
-						THEN (
-							SELECT sincePost.rootPostNo FROM sincePost
-						)
-						ELSE (
-							SELECT t.rootPostsCount FROM threads t
-							WHERE (
-								CASE WHEN $1 IS TRUE
-								THEN (t.id = $2)
-								ELSE (t.slug = $3::citext)
-								END
-							)
-						)
-						END
-					)
-					- $5
-			ELSE
-				rootPostNo <
-					(
-						CASE WHEN $4 != -1
-						THEN (SELECT sincePost.rootPostNo FROM sincePost)
-						ELSE 0
-						END
-					)
-					+ $5
-			END
-		)
+		SELECT p.id, p.parent, p.author::text, p.message, p.isEdited, p.forumSlug::text, p.threadId, p.createdAt
+		FROM rootParentPosts rpp
+		JOIN posts p ON (p.rootparent = rpp.id)
 		ORDER BY path %s, id %s
 
-		`, in.Order, in.Order)
+		`, in.Order, in.Order, in.Order, in.Order)
 
 		sqlValues = []interface{}{in.HasId, in.Id, in.Slug, in.Since, in.Limit, in.IsDesc}
 	}
