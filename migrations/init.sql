@@ -77,10 +77,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_threadId_path_rootPostNo
   ON posts (threadId, path, rootPostNo);
 CREATE INDEX IF NOT EXISTS idx_posts_threadId_path_rootPostNo
   ON posts (threadId, rootPostNo);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_path_id_asc
-  ON posts (path ASC, id ASC);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_path_id_desc
-  ON posts (path DESC, id DESC);
+-- CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_path_id_asc
+  -- ON posts (path ASC, id ASC);
+-- CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_path_id_desc
+  -- ON posts (path DESC, id DESC);
 
 -- triggers
 
