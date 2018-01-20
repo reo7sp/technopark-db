@@ -196,7 +196,7 @@ func showPostsAction(w http.ResponseWriter, in showPostsInput, db *pgx.ConnPool)
 		)
 		SELECT p.id, p.parent, p.author::text, p.message, p.isEdited, p.forumSlug::text, p.threadId, p.createdAt
 		FROM rootParentPosts rpp
-		JOIN posts p ON (p.rootparent = rpp.id)
+		JOIN posts p ON (p.rootParent = rpp.id)
 		ORDER BY path %s, id %s
 
 		`, in.Order, in.Order, in.Order, in.Order)
